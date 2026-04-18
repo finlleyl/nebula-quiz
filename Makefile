@@ -5,6 +5,12 @@ COMPOSE_FILE := deploy/docker-compose.dev.yml
 DB_DSN       := postgres://nebula:nebula@localhost:5432/nebula?sslmode=disable
 MIGRATIONS   := backend/internal/storage/migrations
 
+# Load .env into every target's environment (if present).
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
