@@ -12,6 +12,8 @@ import (
 
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
+	"github.com/finlleyl/nebula-quiz/internal/imagestore"
+	"github.com/finlleyl/nebula-quiz/internal/quiz"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -47,9 +49,28 @@ func main() {
 		SecureCookies: cfg.Production,
 	})
 
+	quizSvc := quiz.NewService(pool)
+	quizHandler := quiz.NewHandler(quizSvc)
+
+	imageCtx, imageCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	imageSvc, err := imagestore.New(imageCtx, imagestore.Config{
+		Endpoint:      cfg.S3Endpoint,
+		AccessKey:     cfg.S3AccessKey,
+		SecretKey:     cfg.S3SecretKey,
+		Bucket:        cfg.S3Bucket,
+		UseSSL:        cfg.S3UseSSL,
+		PublicBaseURL: cfg.S3PublicBaseURL,
+	})
+	imageCancel()
+	if err != nil {
+		slog.Error("imagestore init failed", "err", err)
+		os.Exit(1)
+	}
+	imageHandler := imagestore.NewHandler(imageSvc)
+
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           newRouter(cfg, authHandler),
+		Handler:           newRouter(cfg, issuer, authHandler, quizHandler, imageHandler),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

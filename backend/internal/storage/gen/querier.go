@@ -11,14 +11,40 @@ import (
 )
 
 type Querier interface {
+	ClearQuizCategory(ctx context.Context, id uuid.UUID) error
+	ClearQuizCoverURL(ctx context.Context, id uuid.UUID) error
+	ClearQuizDescription(ctx context.Context, id uuid.UUID) error
+	CountQuizzesByOwner(ctx context.Context, ownerID uuid.UUID) (int64, error)
+	// Appends at the next order_idx atomically under READ COMMITTED by computing
+	// MAX(order_idx)+1 inside the same statement, avoiding TOCTOU collisions on
+	// the UNIQUE (quiz_id, order_idx) index.
+	CreateQuestion(ctx context.Context, arg CreateQuestionParams) (Question, error)
+	CreateQuestionAt(ctx context.Context, arg CreateQuestionAtParams) (Question, error)
+	CreateQuiz(ctx context.Context, arg CreateQuizParams) (Quiz, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteAnswerOptionsByQuestion(ctx context.Context, questionID uuid.UUID) error
+	DeleteQuestion(ctx context.Context, id uuid.UUID) error
+	DeleteQuiz(ctx context.Context, id uuid.UUID) error
+	DuplicateQuiz(ctx context.Context, id uuid.UUID) (Quiz, error)
 	GetActiveRefreshTokenByHash(ctx context.Context, tokenHash []byte) (RefreshToken, error)
+	GetQuestionByID(ctx context.Context, id uuid.UUID) (Question, error)
+	GetQuizByID(ctx context.Context, id uuid.UUID) (Quiz, error)
 	GetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (RefreshToken, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	InsertAnswerOption(ctx context.Context, arg InsertAnswerOptionParams) (AnswerOption, error)
 	InsertRefreshToken(ctx context.Context, arg InsertRefreshTokenParams) (RefreshToken, error)
+	ListAnswerOptionsByQuestion(ctx context.Context, questionID uuid.UUID) ([]AnswerOption, error)
+	ListAnswerOptionsByQuiz(ctx context.Context, quizID uuid.UUID) ([]AnswerOption, error)
+	ListQuestionsByQuiz(ctx context.Context, quizID uuid.UUID) ([]Question, error)
+	ListQuizzesByOwner(ctx context.Context, arg ListQuizzesByOwnerParams) ([]Quiz, error)
 	RevokeAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
 	RevokeRefreshToken(ctx context.Context, id uuid.UUID) error
+	SetQuestionOrderIdx(ctx context.Context, arg SetQuestionOrderIdxParams) error
+	SetQuizPublished(ctx context.Context, arg SetQuizPublishedParams) error
+	ShiftQuestionOrderIdx(ctx context.Context, quizID uuid.UUID) error
+	UpdateQuestion(ctx context.Context, arg UpdateQuestionParams) (Question, error)
+	UpdateQuiz(ctx context.Context, arg UpdateQuizParams) (Quiz, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -8,12 +8,20 @@ import (
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
 	"github.com/finlleyl/nebula-quiz/internal/httpapi/middleware"
+	"github.com/finlleyl/nebula-quiz/internal/imagestore"
+	"github.com/finlleyl/nebula-quiz/internal/quiz"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 )
 
-func newRouter(cfg *config.Config, authHandler *auth.Handler) http.Handler {
+func newRouter(
+	cfg *config.Config,
+	issuer *auth.TokenIssuer,
+	authHandler *auth.Handler,
+	quizHandler *quiz.Handler,
+	imageHandler *imagestore.Handler,
+) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
@@ -37,6 +45,28 @@ func newRouter(cfg *config.Config, authHandler *auth.Handler) http.Handler {
 			r.With(middleware.RateLimit(5, time.Minute)).Post("/login", authHandler.Login)
 			r.With(middleware.RateLimit(60, time.Minute)).Post("/refresh", authHandler.Refresh)
 			r.Post("/logout", authHandler.Logout)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAuth(issuer))
+
+			r.Get("/me/quizzes", quizHandler.ListMyQuizzes)
+
+			r.With(middleware.RequireRole("organizer", "admin")).Post("/quizzes", quizHandler.CreateQuiz)
+			r.Get("/quizzes/{id}", quizHandler.GetQuiz)
+
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireRole("organizer", "admin"))
+				r.Patch("/quizzes/{id}", quizHandler.UpdateQuiz)
+				r.Delete("/quizzes/{id}", quizHandler.DeleteQuiz)
+				r.Post("/quizzes/{id}/publish", quizHandler.Publish)
+				r.Post("/quizzes/{id}/duplicate", quizHandler.Duplicate)
+				r.Post("/quizzes/{id}/questions", quizHandler.CreateQuestion)
+				r.Post("/quizzes/{id}/questions/reorder", quizHandler.ReorderQuestions)
+				r.Patch("/questions/{id}", quizHandler.UpdateQuestion)
+				r.Delete("/questions/{id}", quizHandler.DeleteQuestion)
+				r.Post("/images", imageHandler.Upload)
+			})
 		})
 	})
 

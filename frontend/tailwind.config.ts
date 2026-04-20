@@ -56,6 +56,7 @@ export default {
         md: "12px",
         lg: "16px",
         xl: "20px",
+        "3xl": "32px",
         "2xl": "48px",
         pill: "9999px",
       },

@@ -16,6 +16,13 @@ type Config struct {
 	RefreshTTL     time.Duration
 	AllowedOrigins []string
 	Production     bool
+
+	S3Endpoint      string
+	S3AccessKey     string
+	S3SecretKey     string
+	S3Bucket        string
+	S3UseSSL        bool
+	S3PublicBaseURL string
 }
 
 func Load() (*Config, error) {
@@ -49,14 +56,31 @@ func Load() (*Config, error) {
 		return nil, errors.New("ALLOWED_ORIGINS must contain at least one origin")
 	}
 
+	s3Endpoint := getenv("S3_ENDPOINT", "localhost:9000")
+	s3Bucket := getenv("S3_BUCKET", "nebula-images")
+	s3Access := getenv("S3_ACCESS_KEY", "minio")
+	s3Secret := getenv("S3_SECRET_KEY", "miniominio")
+	s3SSL := os.Getenv("S3_USE_SSL") == "true"
+	scheme := "http"
+	if s3SSL {
+		scheme = "https"
+	}
+	s3Public := getenv("S3_PUBLIC_BASE_URL", fmt.Sprintf("%s://%s", scheme, s3Endpoint))
+
 	return &Config{
-		HTTPAddr:       getenv("HTTP_ADDR", ":8080"),
-		DatabaseURL:    dsn,
-		JWTSecret:      []byte(secret),
-		JWTAccessTTL:   accessTTL,
-		RefreshTTL:     refreshTTL,
-		AllowedOrigins: origins,
-		Production:     os.Getenv("APP_ENV") == "production",
+		HTTPAddr:        getenv("HTTP_ADDR", ":8080"),
+		DatabaseURL:     dsn,
+		JWTSecret:       []byte(secret),
+		JWTAccessTTL:    accessTTL,
+		RefreshTTL:      refreshTTL,
+		AllowedOrigins:  origins,
+		Production:      os.Getenv("APP_ENV") == "production",
+		S3Endpoint:      s3Endpoint,
+		S3AccessKey:     s3Access,
+		S3SecretKey:     s3Secret,
+		S3Bucket:        s3Bucket,
+		S3UseSSL:        s3SSL,
+		S3PublicBaseURL: strings.TrimRight(s3Public, "/"),
 	}, nil
 }
 
