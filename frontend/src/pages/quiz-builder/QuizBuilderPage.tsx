@@ -1,9 +1,10 @@
-import { ArrowLeft, Eye } from "lucide-react";
+import { ArrowLeft, Eye, Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { QuestionEditor } from "@/features/quiz-builder/QuestionEditor";
 import { QuizOverview } from "@/features/quiz-builder/QuizOverview";
+import { QuizSettingsPanel } from "./QuizSettingsPanel";
 import {
   useCreateQuestion,
   useDeleteQuestion,
@@ -31,6 +32,7 @@ export default function QuizBuilderPage() {
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
+  const [view, setView] = useState<"question" | "settings">("question");
   const titleInitialisedFor = useRef<string | null>(null);
 
   useEffect(() => {
@@ -133,6 +135,15 @@ export default function QuizBuilderPage() {
             </p>
           </div>
 
+          <Button
+            variant={view === "settings" ? "primary" : "outline"}
+            size="md"
+            className="gap-2"
+            onClick={() => setView(view === "settings" ? "question" : "settings")}
+          >
+            <Settings className="size-4" />
+            {view === "settings" ? "Editing" : "Settings"}
+          </Button>
           <Button variant="outline" size="md" className="gap-2" asChild>
             <Link to={`/quizzes/${data.quiz.id}`}>
               <Eye className="size-4" />
@@ -151,7 +162,9 @@ export default function QuizBuilderPage() {
 
       <main className="mx-auto grid max-w-[1536px] grid-cols-1 gap-6 px-6 py-8 lg:grid-cols-[1fr_360px]">
         <section>
-          {activeQuestion ? (
+          {view === "settings" ? (
+            <QuizSettingsPanel quiz={data.quiz} />
+          ) : activeQuestion ? (
             <QuestionEditor
               key={activeQuestion.id}
               orderIdx={activeIdx}
@@ -186,9 +199,15 @@ export default function QuizBuilderPage() {
         <aside className="lg:h-[calc(100vh-140px)] lg:sticky lg:top-[96px]">
           <QuizOverview
             questions={data.questions}
-            activeId={activeId}
-            onSelect={setActiveId}
-            onAdd={handleAddQuestion}
+            activeId={view === "question" ? activeId : null}
+            onSelect={(id) => {
+              setActiveId(id);
+              setView("question");
+            }}
+            onAdd={async () => {
+              setView("question");
+              await handleAddQuestion();
+            }}
             onReorder={(order) => reorder.mutate(order)}
             canAdd={!createQuestion.isPending}
           />

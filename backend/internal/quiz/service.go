@@ -226,8 +226,49 @@ func (s *Service) SetPublished(ctx context.Context, quizID, actorID uuid.UUID, a
 		if len(qs) == 0 {
 			return fmt.Errorf("%w: cannot publish quiz without questions", ErrValidation)
 		}
+		opts, err := s.q.ListAnswerOptionsByQuiz(ctx, owned.ID)
+		if err != nil {
+			return err
+		}
+		byQ := make(map[uuid.UUID][]gen.AnswerOption, len(qs))
+		for _, o := range opts {
+			byQ[o.QuestionID] = append(byQ[o.QuestionID], o)
+		}
+		for i, q := range qs {
+			if err := validateQuestionForPublish(i, q, byQ[q.ID]); err != nil {
+				return err
+			}
+		}
 	}
 	return s.q.SetQuizPublished(ctx, gen.SetQuizPublishedParams{ID: quizID, IsPublished: published})
+}
+
+// validateQuestionForPublish enforces strict invariants required for live
+// play: non-empty question text, minOptions..maxOptions options with
+// non-empty text, at least one correct, and single-choice == exactly one.
+func validateQuestionForPublish(idx int, q gen.Question, opts []gen.AnswerOption) error {
+	if strings.TrimSpace(q.Text) == "" {
+		return fmt.Errorf("%w: question #%d has empty text", ErrValidation, idx+1)
+	}
+	if len(opts) < minOptions || len(opts) > maxOptions {
+		return fmt.Errorf("%w: question #%d must have %d..%d options", ErrValidation, idx+1, minOptions, maxOptions)
+	}
+	correct := 0
+	for j, o := range opts {
+		if strings.TrimSpace(o.Text) == "" {
+			return fmt.Errorf("%w: question #%d option[%d] has empty text", ErrValidation, idx+1, j)
+		}
+		if o.IsCorrect {
+			correct++
+		}
+	}
+	if correct == 0 {
+		return fmt.Errorf("%w: question #%d has no correct option", ErrValidation, idx+1)
+	}
+	if q.QuestionType == gen.QuestionTypeSingle && correct != 1 {
+		return fmt.Errorf("%w: question #%d (single) must have exactly one correct option", ErrValidation, idx+1)
+	}
+	return nil
 }
 
 func (s *Service) Duplicate(ctx context.Context, srcID, actorID uuid.UUID, actorRole string) (gen.Quiz, error) {
@@ -476,9 +517,12 @@ func insertOptions(ctx context.Context, qtx *gen.Queries, questionID uuid.UUID, 
 	return out, nil
 }
 
+// Draft-state validation. Empty text and zero correct options are allowed
+// so the builder can create a blank question and fill it progressively.
+// Strict publish-time rules live in validateQuestionForPublish.
 func validateQuestionCreate(in CreateQuestionInput) error {
-	if strings.TrimSpace(in.Text) == "" || len(in.Text) > maxQuestionText {
-		return fmt.Errorf("%w: text length must be 1..%d", ErrValidation, maxQuestionText)
+	if len(in.Text) > maxQuestionText {
+		return fmt.Errorf("%w: text must be at most %d characters", ErrValidation, maxQuestionText)
 	}
 	if in.QuestionType != string(gen.QuestionTypeSingle) && in.QuestionType != string(gen.QuestionTypeMultiple) {
 		return fmt.Errorf("%w: question_type must be 'single' or 'multiple'", ErrValidation)
@@ -489,12 +533,12 @@ func validateQuestionCreate(in CreateQuestionInput) error {
 	if in.Points <= 0 || in.Points > 10_000 {
 		return fmt.Errorf("%w: points must be 1..10000", ErrValidation)
 	}
-	return validateOptions(in.Options, in.QuestionType)
+	return validateOptionsDraft(in.Options, in.QuestionType)
 }
 
 func validateQuestionUpdate(in UpdateQuestionInput, effectiveType string) error {
-	if in.Text != nil && (strings.TrimSpace(*in.Text) == "" || len(*in.Text) > maxQuestionText) {
-		return fmt.Errorf("%w: text length must be 1..%d", ErrValidation, maxQuestionText)
+	if in.Text != nil && len(*in.Text) > maxQuestionText {
+		return fmt.Errorf("%w: text must be at most %d characters", ErrValidation, maxQuestionText)
 	}
 	if in.QuestionType != nil {
 		qt := *in.QuestionType
@@ -511,30 +555,28 @@ func validateQuestionUpdate(in UpdateQuestionInput, effectiveType string) error 
 		return fmt.Errorf("%w: points must be 1..10000", ErrValidation)
 	}
 	if in.Options != nil {
-		return validateOptions(*in.Options, effectiveType)
+		return validateOptionsDraft(*in.Options, effectiveType)
 	}
 	return nil
 }
 
-func validateOptions(opts []OptionInput, questionType string) error {
-	if len(opts) < minOptions || len(opts) > maxOptions {
-		return fmt.Errorf("%w: options count must be %d..%d", ErrValidation, minOptions, maxOptions)
+// Lenient draft-time option validation. Enforces only hard caps and the
+// single-choice "at most one correct" invariant.
+func validateOptionsDraft(opts []OptionInput, questionType string) error {
+	if len(opts) > maxOptions {
+		return fmt.Errorf("%w: options count must be at most %d", ErrValidation, maxOptions)
 	}
 	correct := 0
 	for i, o := range opts {
-		if strings.TrimSpace(o.Text) == "" || len(o.Text) > maxOptionText {
-			return fmt.Errorf("%w: option[%d] text length must be 1..%d", ErrValidation, i, maxOptionText)
+		if len(o.Text) > maxOptionText {
+			return fmt.Errorf("%w: option[%d] text must be at most %d characters", ErrValidation, i, maxOptionText)
 		}
 		if o.IsCorrect {
 			correct++
 		}
 	}
-	if correct == 0 {
-		return fmt.Errorf("%w: at least one option must be correct", ErrValidation)
-	}
-	// When question_type is known, enforce single has exactly one correct.
-	if questionType == string(gen.QuestionTypeSingle) && correct != 1 {
-		return fmt.Errorf("%w: single-choice must have exactly one correct option", ErrValidation)
+	if questionType == string(gen.QuestionTypeSingle) && correct > 1 {
+		return fmt.Errorf("%w: single-choice may have at most one correct option", ErrValidation)
 	}
 	return nil
 }

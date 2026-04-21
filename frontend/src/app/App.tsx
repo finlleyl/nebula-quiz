@@ -7,6 +7,7 @@ import DashboardPage from "@/pages/dashboard/DashboardPage";
 import LandingPage from "@/pages/landing/LandingPage";
 import MyQuizzesPage from "@/pages/quizzes/MyQuizzesPage";
 import QuizBuilderPage from "@/pages/quiz-builder/QuizBuilderPage";
+import QuizPreviewPage from "@/pages/quiz-preview/QuizPreviewPage";
 import RegisterPage from "@/pages/register/RegisterPage";
 
 import { QueryProvider } from "./providers/QueryProvider";
@@ -38,6 +39,14 @@ export default function App() {
                 <RequireRole roles={[...organizerRoles]}>
                   <MyQuizzesPage />
                 </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/quizzes/:id"
+            element={
+              <RequireAuth>
+                <QuizPreviewPage />
               </RequireAuth>
             }
           />
