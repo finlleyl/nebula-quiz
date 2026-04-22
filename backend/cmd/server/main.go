@@ -85,7 +85,7 @@ func main() {
 	imageHandler := imagestore.NewHandler(imageSvc)
 
 	tickets := realtime.NewTicketStore(rdb)
-	hub := realtime.NewHub(tickets)
+	hub := realtime.NewHub(tickets, pool)
 	gameSvc := game.NewService(pool, tickets, hub)
 	gameHandler := game.NewHandler(gameSvc)
 
