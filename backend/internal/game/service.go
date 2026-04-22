@@ -16,7 +16,7 @@ import (
 // codeAlphabet excludes visually ambiguous characters per spec §7.
 const codeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
-// generateRoomCode produces a 7-char code formatted as XXX-XXX.
+// generateRoomCode produces a 7-char code formatted as XXX-XXXX.
 // Alphabet has 32 chars; dash is always at position 3.
 func generateRoomCode() string {
 	b := make([]byte, 7)
@@ -73,6 +73,12 @@ func (s *Service) CreateSession(ctx context.Context, quizID, hostID uuid.UUID) (
 		return nil, fmt.Errorf("get host user: %w", err)
 	}
 
+	// Count questions so we can display total in lobby room state.
+	questions, err := s.q.ListQuestionsByQuiz(ctx, quizID)
+	if err != nil {
+		return nil, fmt.Errorf("list questions: %w", err)
+	}
+
 	var session gen.GameSession
 	for attempt := range 5 {
 		code := generateRoomCode()
@@ -106,13 +112,21 @@ func (s *Service) CreateSession(ctx context.Context, quizID, hostID uuid.UUID) (
 		return nil, fmt.Errorf("issue host ticket: %w", err)
 	}
 
-	// Pre-create the room so it's ready for the host WS connection.
-	s.hub.CreateRoom(session.ID.String())
-
 	matchNum := int32(0)
 	if session.MatchNumber != nil {
 		matchNum = *session.MatchNumber
 	}
+
+	// Pre-create the room so it's ready for the host WS connection.
+	s.hub.CreateRoom(
+		session.ID,
+		quizID,
+		quizRow.Title,
+		len(questions),
+		session.RoomCode,
+		matchNum,
+	)
+
 	return &CreateSessionResult{
 		GameID:      session.ID,
 		RoomCode:    session.RoomCode,

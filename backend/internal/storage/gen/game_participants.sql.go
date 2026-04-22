@@ -120,3 +120,12 @@ func (q *Queries) MarkParticipantLeft(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, markParticipantLeft, id)
 	return err
 }
+
+const addParticipantScore = `
+UPDATE game_participants SET total_score = total_score + $2 WHERE id = $1
+`
+
+func (q *Queries) AddParticipantScore(ctx context.Context, id uuid.UUID, delta int32) error {
+	_, err := q.db.Exec(ctx, addParticipantScore, id, delta)
+	return err
+}

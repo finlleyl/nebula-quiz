@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/finlleyl/nebula-quiz/internal/storage/gen"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var upgrader = websocket.Upgrader{
@@ -21,38 +24,49 @@ type Hub struct {
 	mu      sync.RWMutex
 	rooms   map[string]*Room
 	tickets *TicketStore
+	db      *gen.Queries
 }
 
-func NewHub(tickets *TicketStore) *Hub {
+func NewHub(tickets *TicketStore, pool *pgxpool.Pool) *Hub {
 	return &Hub{
 		rooms:   make(map[string]*Room),
 		tickets: tickets,
+		db:      gen.New(pool),
 	}
 }
 
-// CreateRoom adds a room to the hub and starts its goroutine.
-func (h *Hub) CreateRoom(code string) *Room {
+// CreateRoom creates a new room and starts its goroutine.
+// sessionID is the hub map key; roomCode is the human-readable 7-char code.
+func (h *Hub) CreateRoom(
+	sessionID uuid.UUID,
+	quizID uuid.UUID,
+	quizTitle string,
+	totalQs int,
+	roomCode string,
+	matchNumber int32,
+) *Room {
+	key := sessionID.String()
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if r, ok := h.rooms[code]; ok {
+	if r, ok := h.rooms[key]; ok {
 		return r
 	}
-	r := newRoom(code, h)
-	h.rooms[code] = r
+	r := newRoom(key, roomCode, h, sessionID, quizID, quizTitle, totalQs, matchNumber, h.db)
+	h.rooms[key] = r
 	go r.run()
 	return r
 }
 
 // GetRoom returns an existing room or nil.
-func (h *Hub) GetRoom(code string) *Room {
+func (h *Hub) GetRoom(key string) *Room {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	return h.rooms[code]
+	return h.rooms[key]
 }
 
-func (h *Hub) removeRoom(code string) {
+func (h *Hub) removeRoom(key string) {
 	h.mu.Lock()
-	delete(h.rooms, code)
+	delete(h.rooms, key)
 	h.mu.Unlock()
 }
 
@@ -81,7 +95,9 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	room := h.GetRoom(roomKey)
 	if room == nil {
 		if td.IsHost {
-			room = h.CreateRoom(roomKey)
+			// Host reconnected after room was dropped; recreate with minimal info.
+			// In practice the room should already exist (created in game.Service).
+			room = h.CreateRoom(td.SessionID, uuid.Nil, "", 0, "", 0)
 		} else {
 			_ = conn.WriteMessage(websocket.CloseMessage,
 				websocket.FormatCloseMessage(websocket.CloseNormalClosure, "room not found"))

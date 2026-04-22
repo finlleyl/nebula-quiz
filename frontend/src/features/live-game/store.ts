@@ -28,6 +28,8 @@ interface LiveGameState {
   submitAnswer: (optionIds: string[]) => void;
   sendReady: () => void;
   startGame: () => void;
+  nextQuestion: () => void;
+  skipQuestion: () => void;
   disconnect: () => void;
 }
 
@@ -154,6 +156,14 @@ export const useLiveGame = create<LiveGameState>((set, get) => ({
 
   startGame() {
     quizSocket.send({ type: "host.start_game" });
+  },
+
+  nextQuestion() {
+    quizSocket.send({ type: "host.next_question" });
+  },
+
+  skipQuestion() {
+    quizSocket.send({ type: "host.skip_question" });
   },
 
   disconnect() {

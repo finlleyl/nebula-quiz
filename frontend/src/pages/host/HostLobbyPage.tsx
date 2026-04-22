@@ -16,7 +16,7 @@ import { useLiveGame } from "@/features/live-game/store";
 export default function HostLobbyPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { roomState, connectAsHost, startGame, disconnect } = useLiveGame();
+  const { roomState, connectAsHost, startGame } = useLiveGame();
 
   useEffect(() => {
     const ticket = sessionStorage.getItem("host_ticket");
@@ -31,10 +31,8 @@ export default function HostLobbyPage() {
         window.location.host;
     const url = `${wsBase}/ws?ticket=${encodeURIComponent(ticket)}`;
     connectAsHost(url);
-
-    return () => {
-      disconnect();
-    };
+    // Intentionally no disconnect on unmount — WS must persist across
+    // navigation to HostQuestionPage. Cleanup happens on HostResultsPage exit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 

@@ -25,6 +25,10 @@ type Querier interface {
 	GetUserParticipantBySession(ctx context.Context, arg GetUserParticipantBySessionParams) (GameParticipant, error)
 	UpdateParticipantStatus(ctx context.Context, arg UpdateParticipantStatusParams) error
 	MarkParticipantLeft(ctx context.Context, id uuid.UUID) error
+	AddParticipantScore(ctx context.Context, id uuid.UUID, delta int32) error
+
+	// participant_answers
+	InsertParticipantAnswer(ctx context.Context, arg InsertParticipantAnswerParams) error
 
 	ClearQuizCategory(ctx context.Context, id uuid.UUID) error
 	ClearQuizCoverURL(ctx context.Context, id uuid.UUID) error
