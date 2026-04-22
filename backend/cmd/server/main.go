@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/finlleyl/nebula-quiz/internal/analytics"
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
 	"github.com/finlleyl/nebula-quiz/internal/game"
@@ -89,9 +90,12 @@ func main() {
 	gameSvc := game.NewService(pool, tickets, hub)
 	gameHandler := game.NewHandler(gameSvc)
 
+	analyticsSvc := analytics.NewService(pool)
+	analyticsHandler := analytics.NewHandler(analyticsSvc)
+
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           newRouter(cfg, issuer, authHandler, quizHandler, imageHandler, gameHandler, hub),
+		Handler:           newRouter(cfg, issuer, authHandler, quizHandler, imageHandler, gameHandler, analyticsHandler, hub),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

@@ -95,6 +95,27 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET /api/v1/me/history
+func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserID(r)
+	if !ok {
+		httpapi.WriteProblem(w, http.StatusUnauthorized, "unauthorized", "")
+		return
+	}
+
+	entries, err := h.svc.ListHistory(r.Context(), userID)
+	if err != nil {
+		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal error", err.Error())
+		return
+	}
+	if entries == nil {
+		entries = []HistoryEntry{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(entries)
+}
+
 // POST /api/v1/games/by-code/:code/join
 // Body: { "nickname": "...", "avatar_url": "..." }
 // Returns: { "game_id", "participant_id", "room_code", "ws_ticket" }
