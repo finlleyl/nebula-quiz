@@ -4,7 +4,10 @@ import { RequireAuth } from "@/features/auth/RequireAuth";
 import { RequireRole } from "@/features/auth/RequireRole";
 import { SilentRefresh } from "@/features/auth/SilentRefresh";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
+import HostLobbyPage from "@/pages/host/HostLobbyPage";
 import LandingPage from "@/pages/landing/LandingPage";
+import PlayerJoinPage from "@/pages/play/PlayerJoinPage";
+import PlayerLobbyPage from "@/pages/play/PlayerLobbyPage";
 import MyQuizzesPage from "@/pages/quizzes/MyQuizzesPage";
 import QuizBuilderPage from "@/pages/quiz-builder/QuizBuilderPage";
 import QuizPreviewPage from "@/pages/quiz-preview/QuizPreviewPage";
@@ -22,6 +25,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/register" element={<RegisterPage />} />
+
+          {/* Player join flow — no auth required */}
+          <Route path="/join" element={<PlayerJoinPage />} />
+          <Route path="/join/:code" element={<PlayerJoinPage />} />
+          <Route path="/play/:code/lobby" element={<PlayerLobbyPage />} />
           <Route
             path="/dashboard"
             element={
@@ -60,6 +68,19 @@ export default function App() {
               </RequireAuth>
             }
           />
+
+          {/* Host live session — requires organizer */}
+          <Route
+            path="/host/:code"
+            element={
+              <RequireAuth>
+                <RequireRole roles={[...organizerRoles]}>
+                  <HostLobbyPage />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

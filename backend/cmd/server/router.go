@@ -7,9 +7,11 @@ import (
 
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
+	"github.com/finlleyl/nebula-quiz/internal/game"
 	"github.com/finlleyl/nebula-quiz/internal/httpapi/middleware"
 	"github.com/finlleyl/nebula-quiz/internal/imagestore"
 	"github.com/finlleyl/nebula-quiz/internal/quiz"
+	"github.com/finlleyl/nebula-quiz/internal/realtime"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -21,6 +23,8 @@ func newRouter(
 	authHandler *auth.Handler,
 	quizHandler *quiz.Handler,
 	imageHandler *imagestore.Handler,
+	gameHandler *game.Handler,
+	hub *realtime.Hub,
 ) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
@@ -38,6 +42,9 @@ func newRouter(
 
 	r.Get("/healthz", healthz)
 
+	// WebSocket endpoint — ticket auth, no JWT needed.
+	r.Get("/ws", hub.ServeWS)
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			r.Use(middleware.CSRF(cfg.AllowedOrigins))
@@ -46,6 +53,9 @@ func newRouter(
 			r.With(middleware.RateLimit(60, time.Minute)).Post("/refresh", authHandler.Refresh)
 			r.Post("/logout", authHandler.Logout)
 		})
+
+		// Join a game by room code — no auth required (guests allowed).
+		r.Post("/games/by-code/{code}/join", gameHandler.JoinByCode)
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(issuer))
@@ -66,6 +76,10 @@ func newRouter(
 				r.Patch("/questions/{id}", quizHandler.UpdateQuestion)
 				r.Delete("/questions/{id}", quizHandler.DeleteQuestion)
 				r.Post("/images", imageHandler.Upload)
+
+				// Game session management (host only).
+				r.Post("/games", gameHandler.Create)
+				r.Get("/games/{id}", gameHandler.Get)
 			})
 		})
 	})
