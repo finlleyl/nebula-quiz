@@ -12,9 +12,12 @@ import (
 
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
+	"github.com/finlleyl/nebula-quiz/internal/game"
 	"github.com/finlleyl/nebula-quiz/internal/imagestore"
 	"github.com/finlleyl/nebula-quiz/internal/quiz"
+	"github.com/finlleyl/nebula-quiz/internal/realtime"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -38,6 +41,19 @@ func main() {
 
 	if err := pool.Ping(pingCtx); err != nil {
 		slog.Error("db ping failed", "err", err)
+		os.Exit(1)
+	}
+
+	redisOpts, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		slog.Error("redis url parse failed", "err", err)
+		os.Exit(1)
+	}
+	rdb := redis.NewClient(redisOpts)
+	defer rdb.Close()
+
+	if err := rdb.Ping(pingCtx).Err(); err != nil {
+		slog.Error("redis ping failed", "err", err)
 		os.Exit(1)
 	}
 
@@ -68,9 +84,14 @@ func main() {
 	}
 	imageHandler := imagestore.NewHandler(imageSvc)
 
+	tickets := realtime.NewTicketStore(rdb)
+	hub := realtime.NewHub(tickets)
+	gameSvc := game.NewService(pool, tickets, hub)
+	gameHandler := game.NewHandler(gameSvc)
+
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           newRouter(cfg, issuer, authHandler, quizHandler, imageHandler),
+		Handler:           newRouter(cfg, issuer, authHandler, quizHandler, imageHandler, gameHandler, hub),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
