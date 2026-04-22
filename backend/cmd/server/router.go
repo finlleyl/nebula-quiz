@@ -7,6 +7,7 @@ import (
 
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
+	"github.com/finlleyl/nebula-quiz/internal/game"
 	"github.com/finlleyl/nebula-quiz/internal/httpapi/middleware"
 	"github.com/finlleyl/nebula-quiz/internal/imagestore"
 	"github.com/finlleyl/nebula-quiz/internal/quiz"
@@ -21,6 +22,7 @@ func newRouter(
 	authHandler *auth.Handler,
 	quizHandler *quiz.Handler,
 	imageHandler *imagestore.Handler,
+	gameHandler *game.Handler,
 ) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
@@ -38,6 +40,9 @@ func newRouter(
 
 	r.Get("/healthz", healthz)
 
+	// WS endpoint — ticket-based auth, no JWT here.
+	r.Get("/ws", gameHandler.ServeWS)
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			r.Use(middleware.CSRF(cfg.AllowedOrigins))
@@ -47,10 +52,20 @@ func newRouter(
 			r.Post("/logout", authHandler.Logout)
 		})
 
+		// Game join is public (guests don't have tokens); optionally enriched by auth.
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.OptionalAuth(issuer))
+			r.Post("/games/by-code/{code}/join", gameHandler.JoinGame)
+		})
+
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(issuer))
 
 			r.Get("/me/quizzes", quizHandler.ListMyQuizzes)
+
+			// Game management (organizer only).
+			r.With(middleware.RequireRole("organizer", "admin")).Post("/games", gameHandler.CreateGame)
+			r.With(middleware.RequireRole("organizer", "admin")).Post("/games/{id}/host-ticket", gameHandler.HostTicket)
 
 			r.With(middleware.RequireRole("organizer", "admin")).Post("/quizzes", quizHandler.CreateQuiz)
 			r.Get("/quizzes/{id}", quizHandler.GetQuiz)

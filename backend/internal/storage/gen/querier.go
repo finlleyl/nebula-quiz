@@ -11,6 +11,13 @@ import (
 )
 
 type Querier interface {
+	CreateGameSession(ctx context.Context, arg CreateGameSessionParams) (GameSession, error)
+	CreateParticipant(ctx context.Context, arg CreateParticipantParams) (GameParticipant, error)
+	GetActiveGameSessionByCode(ctx context.Context, roomCode string) (GameSession, error)
+	GetGameSessionByID(ctx context.Context, id uuid.UUID) (GameSession, error)
+	GetParticipantByID(ctx context.Context, id uuid.UUID) (GameParticipant, error)
+	ListParticipants(ctx context.Context, gameSessionID uuid.UUID) ([]GameParticipant, error)
+	RoomCodeExists(ctx context.Context, roomCode string) (bool, error)
 	ClearQuizCategory(ctx context.Context, id uuid.UUID) error
 	ClearQuizCoverURL(ctx context.Context, id uuid.UUID) error
 	ClearQuizDescription(ctx context.Context, id uuid.UUID) error

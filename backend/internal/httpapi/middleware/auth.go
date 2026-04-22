@@ -17,6 +17,23 @@ const (
 	ctxRole   ctxKey = "userRole"
 )
 
+// OptionalAuth extracts and validates the bearer token if present, but does
+// not reject requests without one. Downstream handlers use UserID to check.
+func OptionalAuth(issuer *auth.TokenIssuer) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if raw := bearerToken(r); raw != "" {
+				if claims, err := issuer.Parse(raw); err == nil {
+					ctx := context.WithValue(r.Context(), ctxUserID, claims.UserID)
+					ctx = context.WithValue(ctx, ctxRole, claims.Role)
+					r = r.WithContext(ctx)
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func RequireAuth(issuer *auth.TokenIssuer) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

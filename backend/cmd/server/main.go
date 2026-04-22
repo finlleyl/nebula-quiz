@@ -12,8 +12,10 @@ import (
 
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
+	"github.com/finlleyl/nebula-quiz/internal/game"
 	"github.com/finlleyl/nebula-quiz/internal/imagestore"
 	"github.com/finlleyl/nebula-quiz/internal/quiz"
+	"github.com/finlleyl/nebula-quiz/internal/realtime"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -68,9 +70,14 @@ func main() {
 	}
 	imageHandler := imagestore.NewHandler(imageSvc)
 
+	hub := realtime.NewHub()
+	tickets := game.NewTicketStore()
+	gameSvc := game.NewService(pool, tickets, hub)
+	gameHandler := game.NewHandler(gameSvc, tickets, hub)
+
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           newRouter(cfg, issuer, authHandler, quizHandler, imageHandler),
+		Handler:           newRouter(cfg, issuer, authHandler, quizHandler, imageHandler, gameHandler),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
