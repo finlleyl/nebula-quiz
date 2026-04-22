@@ -30,5 +30,10 @@ frontend/.pnpm-store/
 deploy/**/pgdata/
 deploy/**/miniodata/
 
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/**/*.tsbuildinfo
+
 # Claude artifacts (local per-machine)
 .claude/

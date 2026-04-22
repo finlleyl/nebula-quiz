@@ -4,185 +4,280 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
+	"math/rand/v2"
 
 	"github.com/finlleyl/nebula-quiz/internal/realtime"
 	"github.com/finlleyl/nebula-quiz/internal/storage/gen"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	ErrQuizNotFound    = errors.New("quiz not found")
-	ErrSessionNotFound = errors.New("game session not found")
-	ErrForbidden       = errors.New("forbidden")
-	ErrValidation      = errors.New("validation error")
-	ErrNotInLobby      = errors.New("game is not in lobby state")
-)
+// codeAlphabet excludes visually ambiguous characters per spec §7.
+const codeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
-// CreateGameInput holds the request body for POST /games.
-type CreateGameInput struct {
-	QuizID uuid.UUID
-}
-
-// CreateGameResult is returned after creating a session.
-type CreateGameResult struct {
-	GameID      uuid.UUID
-	RoomCode    string
-	MatchNumber *int32
-}
-
-// JoinGameInput holds the request body for POST /games/by-code/:code/join.
-type JoinGameInput struct {
-	Nickname  string
-	AvatarURL *string
-	UserID    *uuid.UUID // nil for guests
-}
-
-// JoinGameResult is returned after joining.
-type JoinGameResult struct {
-	GameID        uuid.UUID
-	ParticipantID uuid.UUID
-	WSTicket      string
+// generateRoomCode produces a 7-char code formatted as XXX-XXXX.
+// Alphabet has 32 chars; dash is always at position 3.
+func generateRoomCode() string {
+	b := make([]byte, 7)
+	for i := range b {
+		if i == 3 {
+			b[i] = '-'
+			continue
+		}
+		b[i] = codeAlphabet[rand.IntN(len(codeAlphabet))]
+	}
+	return string(b)
 }
 
 type Service struct {
-	pool    *pgxpool.Pool
 	q       *gen.Queries
-	tickets *TicketStore
+	pool    *pgxpool.Pool
+	tickets *realtime.TicketStore
 	hub     *realtime.Hub
 }
 
-func NewService(pool *pgxpool.Pool, tickets *TicketStore, hub *realtime.Hub) *Service {
+func NewService(pool *pgxpool.Pool, tickets *realtime.TicketStore, hub *realtime.Hub) *Service {
 	return &Service{
-		pool:    pool,
 		q:       gen.New(pool),
+		pool:    pool,
 		tickets: tickets,
 		hub:     hub,
 	}
 }
 
-// CreateGame creates a game session and the corresponding realtime room.
-func (s *Service) CreateGame(ctx context.Context, hostID uuid.UUID, in CreateGameInput) (CreateGameResult, error) {
-	// Load quiz to validate ownership and get metadata.
-	quiz, err := s.q.GetQuizByID(ctx, in.QuizID)
+// CreateSessionResult is returned to the host after creating a game session.
+type CreateSessionResult struct {
+	GameID      uuid.UUID
+	RoomCode    string
+	MatchNumber int32
+	WSTicket    string
+}
+
+// CreateSession creates a new lobby for a quiz and issues a host WS ticket.
+// Retries room code generation on collision up to 5 times (spec §7).
+func (s *Service) CreateSession(ctx context.Context, quizID, hostID uuid.UUID) (*CreateSessionResult, error) {
+	quizRow, err := s.q.GetQuizByID(ctx, quizID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return CreateGameResult{}, ErrQuizNotFound
+			return nil, ErrQuizNotFound
 		}
-		return CreateGameResult{}, err
+		return nil, fmt.Errorf("get quiz: %w", err)
 	}
-	if quiz.OwnerID != hostID {
-		return CreateGameResult{}, ErrForbidden
+	if quizRow.OwnerID != hostID {
+		return nil, ErrForbidden
 	}
 
-	code, err := GenerateRoomCode(ctx, s.q)
+	hostUser, err := s.q.GetUserByID(ctx, hostID)
 	if err != nil {
-		return CreateGameResult{}, fmt.Errorf("generate room code: %w", err)
+		return nil, fmt.Errorf("get host user: %w", err)
 	}
 
-	session, err := s.q.CreateGameSession(ctx, gen.CreateGameSessionParams{
-		QuizID:   in.QuizID,
-		HostID:   hostID,
-		RoomCode: code,
+	// Count questions so we can display total in lobby room state.
+	questions, err := s.q.ListQuestionsByQuiz(ctx, quizID)
+	if err != nil {
+		return nil, fmt.Errorf("list questions: %w", err)
+	}
+
+	var session gen.GameSession
+	for attempt := range 5 {
+		code := generateRoomCode()
+		session, err = s.q.CreateGameSession(ctx, gen.CreateGameSessionParams{
+			QuizID:   quizID,
+			HostID:   hostID,
+			RoomCode: code,
+		})
+		if err == nil {
+			break
+		}
+		if isUniqueViolation(err) {
+			if attempt == 4 {
+				return nil, fmt.Errorf("room code collision after 5 attempts")
+			}
+			continue
+		}
+		return nil, fmt.Errorf("create session: %w", err)
+	}
+
+	participantID := uuid.New() // host pseudo-participant (no row in game_participants)
+	ticket, err := s.tickets.Issue(ctx, realtime.TicketData{
+		UserID:        &hostID,
+		SessionID:     session.ID,
+		ParticipantID: participantID,
+		IsHost:        true,
+		IsGuest:       false,
+		Nickname:      hostUser.DisplayName,
 	})
 	if err != nil {
-		return CreateGameResult{}, fmt.Errorf("create game session: %w", err)
+		return nil, fmt.Errorf("issue host ticket: %w", err)
 	}
 
-	// Count questions for quiz summary.
-	questions, err := s.q.ListQuestionsByQuiz(ctx, in.QuizID)
-	if err != nil {
-		return CreateGameResult{}, err
+	matchNum := int32(0)
+	if session.MatchNumber != nil {
+		matchNum = *session.MatchNumber
 	}
 
-	s.hub.CreateRoom(code, session.ID, hostID, realtime.QuizInfo{
-		Title:          quiz.Title,
-		TotalQuestions: len(questions),
-	})
+	// Pre-create the room so it's ready for the host WS connection.
+	s.hub.CreateRoom(
+		session.ID,
+		quizID,
+		quizRow.Title,
+		len(questions),
+		session.RoomCode,
+		matchNum,
+	)
 
-	return CreateGameResult{
+	return &CreateSessionResult{
 		GameID:      session.ID,
-		RoomCode:    code,
-		MatchNumber: session.MatchNumber,
+		RoomCode:    session.RoomCode,
+		MatchNumber: matchNum,
+		WSTicket:    ticket,
 	}, nil
 }
 
-// JoinGame adds a participant to a lobby-state session and issues a WS ticket.
-func (s *Service) JoinGame(ctx context.Context, code string, in JoinGameInput) (JoinGameResult, error) {
-	nickname := strings.TrimSpace(in.Nickname)
-	if nickname == "" || len(nickname) > 50 {
-		return JoinGameResult{}, fmt.Errorf("%w: nickname must be 1..50 characters", ErrValidation)
-	}
+// JoinResult is returned to a player after joining a lobby.
+type JoinResult struct {
+	GameID        uuid.UUID
+	ParticipantID uuid.UUID
+	RoomCode      string
+	WSTicket      string
+}
 
+// JoinByCode adds a participant to an open lobby and issues a player WS ticket.
+func (s *Service) JoinByCode(
+	ctx context.Context,
+	code, nickname string,
+	avatarURL *string,
+	userID *uuid.UUID,
+) (*JoinResult, error) {
 	session, err := s.q.GetActiveGameSessionByCode(ctx, code)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return JoinGameResult{}, ErrSessionNotFound
+			return nil, ErrSessionNotFound
 		}
-		return JoinGameResult{}, err
+		return nil, fmt.Errorf("get session: %w", err)
 	}
 	if session.Status != gen.GameStatusLobby {
-		return JoinGameResult{}, ErrNotInLobby
+		return nil, ErrSessionNotInLobby
+	}
+
+	// Prevent a logged-in user from joining the same session twice.
+	if userID != nil {
+		_, checkErr := s.q.GetUserParticipantBySession(ctx, gen.GetUserParticipantBySessionParams{
+			GameSessionID: session.ID,
+			UserID:        *userID,
+		})
+		if checkErr == nil {
+			return nil, ErrAlreadyJoined
+		}
+		if !errors.Is(checkErr, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("check duplicate: %w", checkErr)
+		}
 	}
 
 	participant, err := s.q.CreateParticipant(ctx, gen.CreateParticipantParams{
 		GameSessionID: session.ID,
-		UserID:        in.UserID,
+		UserID:        userID,
 		Nickname:      nickname,
-		AvatarUrl:     in.AvatarURL,
+		AvatarUrl:     avatarURL,
 	})
 	if err != nil {
-		return JoinGameResult{}, fmt.Errorf("create participant: %w", err)
+		return nil, fmt.Errorf("create participant: %w", err)
 	}
 
-	ticket, err := s.tickets.Issue(TicketClaims{
-		UserID:        coalesceUUID(in.UserID),
+	ticket, err := s.tickets.Issue(ctx, realtime.TicketData{
+		UserID:        userID,
+		SessionID:     session.ID,
 		ParticipantID: participant.ID,
-		GameSessionID: session.ID,
-		RoomCode:      session.RoomCode,
 		IsHost:        false,
-		IsGuest:       in.UserID == nil,
+		IsGuest:       userID == nil,
 		Nickname:      nickname,
 	})
 	if err != nil {
-		return JoinGameResult{}, fmt.Errorf("issue ticket: %w", err)
+		return nil, fmt.Errorf("issue player ticket: %w", err)
 	}
 
-	return JoinGameResult{
+	return &JoinResult{
 		GameID:        session.ID,
 		ParticipantID: participant.ID,
+		RoomCode:      session.RoomCode,
 		WSTicket:      ticket,
 	}, nil
 }
 
-// IssueHostTicket issues a WS ticket for the host of an existing session.
-func (s *Service) IssueHostTicket(ctx context.Context, sessionID, hostID uuid.UUID, displayName string) (string, error) {
-	session, err := s.q.GetGameSessionByID(ctx, sessionID)
+// GetSession returns session details for the GET /games/:id endpoint.
+func (s *Service) GetSession(ctx context.Context, gameID uuid.UUID) (gen.GameSession, error) {
+	sess, err := s.q.GetGameSessionByID(ctx, gameID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", ErrSessionNotFound
+			return gen.GameSession{}, ErrSessionNotFound
 		}
-		return "", err
+		return gen.GameSession{}, fmt.Errorf("get session: %w", err)
 	}
-	if session.HostID != hostID {
-		return "", ErrForbidden
-	}
-
-	return s.tickets.Issue(TicketClaims{
-		UserID:        hostID,
-		ParticipantID: hostID, // host uses their own user ID as participant key
-		GameSessionID: session.ID,
-		RoomCode:      session.RoomCode,
-		IsHost:        true,
-		Nickname:      displayName,
-	})
+	return sess, nil
 }
 
-func coalesceUUID(u *uuid.UUID) uuid.UUID {
-	if u == nil {
-		return uuid.UUID{}
+// HistoryEntry is one row returned by GET /me/history.
+type HistoryEntry struct {
+	SessionID         string  `json:"session_id"`
+	RoomCode          string  `json:"room_code"`
+	MatchNumber       *int32  `json:"match_number"`
+	Status            string  `json:"status"`
+	FinishedAt        *string `json:"finished_at"`
+	QuizTitle         string  `json:"quiz_title"`
+	TotalScore        int32   `json:"total_score"`
+	Rank              int64   `json:"rank"`
+	TotalParticipants int64   `json:"total_participants"`
+}
+
+// ListHistory returns finished game sessions a user participated in.
+func (s *Service) ListHistory(ctx context.Context, userID uuid.UUID) ([]HistoryEntry, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT
+			gs.id,
+			gs.room_code,
+			gs.match_number,
+			gs.status,
+			gs.finished_at,
+			qz.title,
+			gp.total_score,
+			(SELECT COUNT(*) + 1
+			   FROM game_participants x
+			  WHERE x.game_session_id = gs.id
+			    AND x.total_score > gp.total_score)    AS rank,
+			(SELECT COUNT(*)
+			   FROM game_participants x
+			  WHERE x.game_session_id = gs.id)          AS total_participants
+		FROM game_participants gp
+		JOIN game_sessions gs ON gs.id = gp.game_session_id
+		JOIN quizzes qz        ON qz.id = gs.quiz_id
+		WHERE gp.user_id = $1 AND gs.status = 'finished'
+		ORDER BY gs.finished_at DESC NULLS LAST
+		LIMIT 50
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list history: %w", err)
 	}
-	return *u
+	defer rows.Close()
+
+	var entries []HistoryEntry
+	for rows.Next() {
+		var e HistoryEntry
+		var sessionID uuid.UUID
+		var finishedAt pgtype.Timestamptz
+		if err := rows.Scan(
+			&sessionID, &e.RoomCode, &e.MatchNumber, &e.Status,
+			&finishedAt, &e.QuizTitle, &e.TotalScore, &e.Rank, &e.TotalParticipants,
+		); err != nil {
+			return nil, fmt.Errorf("scan history row: %w", err)
+		}
+		e.SessionID = sessionID.String()
+		if finishedAt.Valid {
+			t := finishedAt.Time.Format("2006-01-02T15:04:05Z")
+			e.FinishedAt = &t
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
 }

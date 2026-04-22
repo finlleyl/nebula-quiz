@@ -1,4 +1,4 @@
-import { ClientMessage, ServerMessage, decode, encode } from "@/shared/lib/ws/protocol";
+import { decode, encode, type ClientMessage, type ServerMessage } from "@/shared/lib/ws/protocol";
 
 type Listener = (msg: ServerMessage) => void;
 
@@ -7,21 +7,21 @@ class QuizSocket {
   private listeners = new Set<Listener>();
   private attempts = 0;
   private url = "";
-  private shouldReconnect = true;
+  private closed = false;
 
   connect(url: string) {
     this.url = url;
-    this.shouldReconnect = true;
+    this.closed = false;
     this.attempts = 0;
     this.open();
   }
 
   private open() {
-    if (!this.url) return;
+    if (this.closed) return;
     const ws = new WebSocket(this.url);
     this.ws = ws;
 
-    ws.onmessage = (e) => {
+    ws.onmessage = (e: MessageEvent<string>) => {
       const msg = decode(e.data);
       if (msg) this.listeners.forEach((l) => l(msg));
     };
@@ -31,7 +31,7 @@ class QuizSocket {
     };
 
     ws.onclose = () => {
-      if (!this.shouldReconnect) return;
+      if (this.closed) return;
       const delay =
         Math.min(1000 * 2 ** this.attempts++, 30_000) +
         Math.random() * 1000;
@@ -45,16 +45,19 @@ class QuizSocket {
     }
   }
 
-  on(fn: Listener) {
+  on(fn: Listener): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
 
   close() {
-    this.shouldReconnect = false;
-    this.url = "";
+    this.closed = true;
     this.ws?.close();
     this.listeners.clear();
+  }
+
+  get readyState(): number {
+    return this.ws?.readyState ?? WebSocket.CLOSED;
   }
 }
 

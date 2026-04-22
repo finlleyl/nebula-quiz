@@ -1,6 +1,7 @@
-import { Pencil, Play } from "lucide-react";
+import { Loader2, Pencil, Play } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { useHostGame } from "@/features/live-game/hooks";
 import { Badge } from "@/shared/ui/Badge";
 
 import type { QuizDTO } from "./types";
@@ -11,6 +12,9 @@ interface Props {
 }
 
 export function QuizCard({ quiz, questionsCount }: Props) {
+  const hostGame = useHostGame();
+  const canHost =
+    quiz.is_published && (questionsCount === undefined || questionsCount > 0);
   return (
     <article className="group relative flex w-[280px] shrink-0 flex-col overflow-hidden rounded-3xl border border-border-subtle bg-bg-card">
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-primary-500/30 to-accent-cyan/10">
@@ -51,13 +55,34 @@ export function QuizCard({ quiz, questionsCount }: Props) {
             <Play className="size-3" />
             {formatPlays(quiz.plays_count)}
           </span>
-          <Link
-            to={`/quizzes/${quiz.id}/edit`}
-            aria-label={`Edit ${quiz.title}`}
-            className="rounded-pill bg-bg-elevated p-2 text-text-secondary transition-colors hover:bg-primary-500/20 hover:text-primary-400"
-          >
-            <Pencil className="size-4" />
-          </Link>
+          <div className="flex items-center gap-1">
+            {canHost ? (
+              <button
+                type="button"
+                disabled={hostGame.isPending}
+                aria-label={`Host ${quiz.title}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  hostGame.mutate(quiz.id);
+                }}
+                className="rounded-pill bg-primary-500/15 p-2 text-primary-400 transition-colors hover:bg-primary-500/25 disabled:opacity-50"
+              >
+                {hostGame.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Play className="size-4" />
+                )}
+              </button>
+            ) : null}
+            <Link
+              to={`/quizzes/${quiz.id}/edit`}
+              aria-label={`Edit ${quiz.title}`}
+              className="rounded-pill bg-bg-elevated p-2 text-text-secondary transition-colors hover:bg-primary-500/20 hover:text-primary-400"
+            >
+              <Pencil className="size-4" />
+            </Link>
+          </div>
         </div>
       </div>
     </article>

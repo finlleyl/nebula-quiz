@@ -11,6 +11,7 @@ import (
 type Config struct {
 	HTTPAddr       string
 	DatabaseURL    string
+	RedisURL       string
 	JWTSecret      []byte
 	JWTAccessTTL   time.Duration
 	RefreshTTL     time.Duration
@@ -34,6 +35,7 @@ func Load() (*Config, error) {
 	if dsn == "" {
 		return nil, errors.New("DATABASE_URL is required")
 	}
+	redisURL := getenv("REDIS_URL", "redis://localhost:6379")
 
 	accessTTL, err := parseDuration("JWT_ACCESS_TTL", "15m")
 	if err != nil {
@@ -70,6 +72,7 @@ func Load() (*Config, error) {
 	return &Config{
 		HTTPAddr:        getenv("HTTP_ADDR", ":8080"),
 		DatabaseURL:     dsn,
+		RedisURL:        redisURL,
 		JWTSecret:       []byte(secret),
 		JWTAccessTTL:    accessTTL,
 		RefreshTTL:      refreshTTL,

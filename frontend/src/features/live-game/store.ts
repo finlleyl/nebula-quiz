@@ -1,104 +1,146 @@
 import { create } from "zustand";
-import {
-  GameFinishedPayload,
-  LeaderboardUpdatePayload,
-  QuestionEndPayload,
+import type {
+  ParticipantSummary,
   QuestionStartPayload,
+  QuestionEndPayload,
+  LeaderboardEntry,
+  GameFinishedPayload,
   RoomStatePayload,
   ServerMessage,
 } from "@/shared/lib/ws/protocol";
 import { quizSocket } from "./ws-client";
 
-export interface LiveGameState {
+interface LiveGameState {
   roomState: RoomStatePayload | null;
   activeQuestion: QuestionStartPayload | null;
-  leaderboard: LeaderboardUpdatePayload | null;
-  gameFinished: GameFinishedPayload | null;
+  questionResult: QuestionEndPayload | null;
+  leaderboard: LeaderboardEntry[];
   myAnswer: string[] | null;
-  myResult: QuestionEndPayload["my_result"] | null;
   myScore: number;
+  myRank: number;
+  myParticipantId: string | null;
+  finishedPayload: GameFinishedPayload | null;
 
+  // Actions
+  connectAsHost: (wsUrl: string) => void;
+  connectAsPlayer: (wsUrl: string, participantId: string) => void;
   handle: (msg: ServerMessage) => void;
   submitAnswer: (optionIds: string[]) => void;
-  reset: () => void;
+  sendReady: () => void;
+  startGame: () => void;
+  nextQuestion: () => void;
+  skipQuestion: () => void;
+  disconnect: () => void;
 }
 
 export const useLiveGame = create<LiveGameState>((set, get) => ({
   roomState: null,
   activeQuestion: null,
-  leaderboard: null,
-  gameFinished: null,
+  questionResult: null,
+  leaderboard: [],
   myAnswer: null,
-  myResult: null,
   myScore: 0,
+  myRank: 0,
+  myParticipantId: null,
+  finishedPayload: null,
 
-  handle: (msg) => {
+  connectAsHost(wsUrl) {
+    quizSocket.connect(wsUrl);
+    quizSocket.on((msg) => get().handle(msg));
+  },
+
+  connectAsPlayer(wsUrl, participantId) {
+    set({ myParticipantId: participantId });
+    quizSocket.connect(wsUrl);
+    quizSocket.on((msg) => get().handle(msg));
+  },
+
+  handle(msg) {
     switch (msg.type) {
       case "room.state":
         set({ roomState: msg.payload });
         break;
+
+      case "participant.joined": {
+        const rs = get().roomState;
+        if (!rs) break;
+        const already = rs.participants.some(
+          (p) => p.id === msg.payload.participant.id
+        );
+        if (!already) {
+          set({
+            roomState: {
+              ...rs,
+              participants: [...rs.participants, msg.payload.participant],
+            },
+          });
+        }
+        break;
+      }
+
+      case "participant.left": {
+        const rs = get().roomState;
+        if (!rs) break;
+        set({
+          roomState: {
+            ...rs,
+            participants: rs.participants.filter(
+              (p: ParticipantSummary) => p.id !== msg.payload.participant_id
+            ),
+          },
+        });
+        break;
+      }
+
+      case "participant.status": {
+        const rs = get().roomState;
+        if (!rs) break;
+        set({
+          roomState: {
+            ...rs,
+            participants: rs.participants.map((p: ParticipantSummary) =>
+              p.id === msg.payload.participant_id
+                ? { ...p, status: msg.payload.status }
+                : p
+            ),
+          },
+        });
+        break;
+      }
+
       case "question.start":
-        // Never expose correct_option_ids at this stage — payload has none per spec.
-        set({ activeQuestion: msg.payload, myAnswer: null, myResult: null });
+        set({
+          activeQuestion: msg.payload,
+          questionResult: null,
+          myAnswer: null,
+        });
         break;
+
       case "question.end":
-        set((s) => ({
-          myResult: msg.payload.my_result,
-          myScore: s.myScore + (msg.payload.my_result?.score_awarded ?? 0),
-        }));
+        set({
+          questionResult: msg.payload,
+          myScore: msg.payload.my_result.total_score,
+        });
         break;
+
       case "leaderboard.update":
-        set({ leaderboard: msg.payload });
+        set({
+          leaderboard: msg.payload.top,
+          myRank: msg.payload.my_rank,
+          myScore: msg.payload.my_score,
+        });
         break;
+
       case "game.finished":
-        set({ gameFinished: msg.payload });
+        set({ finishedPayload: msg.payload });
         break;
-      case "participant.joined":
-        set((s) => {
-          if (!s.roomState) return {};
-          return {
-            roomState: {
-              ...s.roomState,
-              participants: [
-                ...s.roomState.participants,
-                msg.payload.participant,
-              ],
-            },
-          };
-        });
-        break;
-      case "participant.left":
-        set((s) => {
-          if (!s.roomState) return {};
-          return {
-            roomState: {
-              ...s.roomState,
-              participants: s.roomState.participants.filter(
-                (p) => p.id !== msg.payload.participant_id
-              ),
-            },
-          };
-        });
-        break;
-      case "participant.status":
-        set((s) => {
-          if (!s.roomState) return {};
-          return {
-            roomState: {
-              ...s.roomState,
-              participants: s.roomState.participants.map((p) =>
-                p.id === msg.payload.participant_id
-                  ? { ...p, status: msg.payload.status }
-                  : p
-              ),
-            },
-          };
-        });
+
+      default:
         break;
     }
   },
 
-  submitAnswer: (optionIds) => {
+  submitAnswer(optionIds) {
     const q = get().activeQuestion;
     if (!q || get().myAnswer) return;
     set({ myAnswer: optionIds });
@@ -108,14 +150,34 @@ export const useLiveGame = create<LiveGameState>((set, get) => ({
     });
   },
 
-  reset: () =>
+  sendReady() {
+    quizSocket.send({ type: "participant.ready" });
+  },
+
+  startGame() {
+    quizSocket.send({ type: "host.start_game" });
+  },
+
+  nextQuestion() {
+    quizSocket.send({ type: "host.next_question" });
+  },
+
+  skipQuestion() {
+    quizSocket.send({ type: "host.skip_question" });
+  },
+
+  disconnect() {
+    quizSocket.close();
     set({
       roomState: null,
       activeQuestion: null,
-      leaderboard: null,
-      gameFinished: null,
+      questionResult: null,
+      leaderboard: [],
       myAnswer: null,
-      myResult: null,
       myScore: 0,
-    }),
+      myRank: 0,
+      myParticipantId: null,
+      finishedPayload: null,
+    });
+  },
 }));

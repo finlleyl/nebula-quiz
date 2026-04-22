@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/finlleyl/nebula-quiz/internal/analytics"
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
 	"github.com/finlleyl/nebula-quiz/internal/game"
@@ -17,6 +18,7 @@ import (
 	"github.com/finlleyl/nebula-quiz/internal/quiz"
 	"github.com/finlleyl/nebula-quiz/internal/realtime"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -40,6 +42,19 @@ func main() {
 
 	if err := pool.Ping(pingCtx); err != nil {
 		slog.Error("db ping failed", "err", err)
+		os.Exit(1)
+	}
+
+	redisOpts, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		slog.Error("redis url parse failed", "err", err)
+		os.Exit(1)
+	}
+	rdb := redis.NewClient(redisOpts)
+	defer rdb.Close()
+
+	if err := rdb.Ping(pingCtx).Err(); err != nil {
+		slog.Error("redis ping failed", "err", err)
 		os.Exit(1)
 	}
 
@@ -70,14 +85,17 @@ func main() {
 	}
 	imageHandler := imagestore.NewHandler(imageSvc)
 
-	hub := realtime.NewHub()
-	tickets := game.NewTicketStore()
+	tickets := realtime.NewTicketStore(rdb)
+	hub := realtime.NewHub(tickets, pool)
 	gameSvc := game.NewService(pool, tickets, hub)
-	gameHandler := game.NewHandler(gameSvc, tickets, hub)
+	gameHandler := game.NewHandler(gameSvc)
+
+	analyticsSvc := analytics.NewService(pool)
+	analyticsHandler := analytics.NewHandler(analyticsSvc)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           newRouter(cfg, issuer, authHandler, quizHandler, imageHandler, gameHandler),
+		Handler:           newRouter(cfg, issuer, authHandler, quizHandler, imageHandler, gameHandler, analyticsHandler, hub),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/finlleyl/nebula-quiz/internal/analytics"
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
 	"github.com/finlleyl/nebula-quiz/internal/game"
 	"github.com/finlleyl/nebula-quiz/internal/httpapi/middleware"
 	"github.com/finlleyl/nebula-quiz/internal/imagestore"
 	"github.com/finlleyl/nebula-quiz/internal/quiz"
+	"github.com/finlleyl/nebula-quiz/internal/realtime"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -23,6 +25,8 @@ func newRouter(
 	quizHandler *quiz.Handler,
 	imageHandler *imagestore.Handler,
 	gameHandler *game.Handler,
+	analyticsHandler *analytics.Handler,
+	hub *realtime.Hub,
 ) http.Handler {
 	r := chi.NewRouter()
 	r.Use(chimw.RequestID)
@@ -40,8 +44,8 @@ func newRouter(
 
 	r.Get("/healthz", healthz)
 
-	// WS endpoint — ticket-based auth, no JWT here.
-	r.Get("/ws", gameHandler.ServeWS)
+	// WebSocket endpoint — ticket auth, no JWT needed.
+	r.Get("/ws", hub.ServeWS)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
@@ -52,21 +56,16 @@ func newRouter(
 			r.Post("/logout", authHandler.Logout)
 		})
 
-		// Game join is public (guests don't have tokens); optionally enriched by auth.
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.OptionalAuth(issuer))
-			r.Post("/games/by-code/{code}/join", gameHandler.JoinGame)
-		})
+		// Join a game by room code — no auth required (guests allowed).
+		r.Post("/games/by-code/{code}/join", gameHandler.JoinByCode)
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth(issuer))
 
 			r.Get("/me/quizzes", quizHandler.ListMyQuizzes)
+			r.Get("/me/history", gameHandler.History)
 
-			// Game management (organizer only).
-			r.With(middleware.RequireRole("organizer", "admin")).Post("/games", gameHandler.CreateGame)
-			r.With(middleware.RequireRole("organizer", "admin")).Post("/games/{id}/host-ticket", gameHandler.HostTicket)
-
+			r.With(middleware.RequireRole("organizer", "admin")).Get("/analytics/overview", analyticsHandler.Overview)
 			r.With(middleware.RequireRole("organizer", "admin")).Post("/quizzes", quizHandler.CreateQuiz)
 			r.Get("/quizzes/{id}", quizHandler.GetQuiz)
 
@@ -81,6 +80,10 @@ func newRouter(
 				r.Patch("/questions/{id}", quizHandler.UpdateQuestion)
 				r.Delete("/questions/{id}", quizHandler.DeleteQuestion)
 				r.Post("/images", imageHandler.Upload)
+
+				// Game session management (host only).
+				r.Post("/games", gameHandler.Create)
+				r.Get("/games/{id}", gameHandler.Get)
 			})
 		})
 	})

@@ -11,13 +11,25 @@ import (
 )
 
 type Querier interface {
+	// game_sessions
 	CreateGameSession(ctx context.Context, arg CreateGameSessionParams) (GameSession, error)
-	CreateParticipant(ctx context.Context, arg CreateParticipantParams) (GameParticipant, error)
 	GetActiveGameSessionByCode(ctx context.Context, roomCode string) (GameSession, error)
 	GetGameSessionByID(ctx context.Context, id uuid.UUID) (GameSession, error)
+	StartGameSession(ctx context.Context, id uuid.UUID) error
+	FinishGameSession(ctx context.Context, id uuid.UUID) error
+
+	// game_participants
+	CreateParticipant(ctx context.Context, arg CreateParticipantParams) (GameParticipant, error)
+	GetParticipantsBySession(ctx context.Context, gameSessionID uuid.UUID) ([]GameParticipant, error)
 	GetParticipantByID(ctx context.Context, id uuid.UUID) (GameParticipant, error)
-	ListParticipants(ctx context.Context, gameSessionID uuid.UUID) ([]GameParticipant, error)
-	RoomCodeExists(ctx context.Context, roomCode string) (bool, error)
+	GetUserParticipantBySession(ctx context.Context, arg GetUserParticipantBySessionParams) (GameParticipant, error)
+	UpdateParticipantStatus(ctx context.Context, arg UpdateParticipantStatusParams) error
+	MarkParticipantLeft(ctx context.Context, id uuid.UUID) error
+	AddParticipantScore(ctx context.Context, id uuid.UUID, delta int32) error
+
+	// participant_answers
+	InsertParticipantAnswer(ctx context.Context, arg InsertParticipantAnswerParams) error
+
 	ClearQuizCategory(ctx context.Context, id uuid.UUID) error
 	ClearQuizCoverURL(ctx context.Context, id uuid.UUID) error
 	ClearQuizDescription(ctx context.Context, id uuid.UUID) error

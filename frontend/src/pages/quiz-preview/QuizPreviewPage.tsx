@@ -1,6 +1,7 @@
-import { ArrowLeft, Check, Clock, Pencil } from "lucide-react";
+import { ArrowLeft, Check, Clock, Loader2, Pencil, Play } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { useHostGame } from "@/features/live-game/hooks";
 import { useQuiz } from "@/features/quizzes/hooks";
 import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/button";
@@ -10,6 +11,7 @@ export default function QuizPreviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading, error } = useQuiz(id);
+  const hostGame = useHostGame();
 
   if (isLoading) {
     return (
@@ -27,6 +29,7 @@ export default function QuizPreviewPage() {
   }
 
   const { quiz, questions } = data;
+  const canHost = quiz.is_published && questions.length > 0;
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -50,7 +53,33 @@ export default function QuizPreviewPage() {
               Edit
             </Link>
           </Button>
+          <Button
+            variant="primary"
+            size="md"
+            className="gap-2"
+            disabled={!canHost || hostGame.isPending}
+            title={
+              !quiz.is_published
+                ? "Publish the quiz to host a game"
+                : questions.length === 0
+                  ? "Add at least one question"
+                  : undefined
+            }
+            onClick={() => hostGame.mutate(quiz.id)}
+          >
+            {hostGame.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Play className="size-4" />
+            )}
+            Host Game
+          </Button>
         </div>
+        {hostGame.isError ? (
+          <div className="mx-auto max-w-[960px] px-6 pb-3 text-sm text-accent-error">
+            Failed to start game. Try again.
+          </div>
+        ) : null}
       </header>
 
       <main className="mx-auto max-w-[960px] px-6 py-10 space-y-8">
