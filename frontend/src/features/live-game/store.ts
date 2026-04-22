@@ -20,6 +20,9 @@ interface LiveGameState {
   myRank: number;
   myParticipantId: string | null;
   finishedPayload: GameFinishedPayload | null;
+  // Power-up state
+  powerupsLeft: number;
+  hiddenOptionIds: string[];
 
   // Actions
   connectAsHost: (wsUrl: string) => void;
@@ -30,6 +33,7 @@ interface LiveGameState {
   startGame: () => void;
   nextQuestion: () => void;
   skipQuestion: () => void;
+  usePowerup: (type: "fifty_fifty") => void;
   disconnect: () => void;
 }
 
@@ -43,6 +47,8 @@ export const useLiveGame = create<LiveGameState>((set, get) => ({
   myRank: 0,
   myParticipantId: null,
   finishedPayload: null,
+  powerupsLeft: 1,
+  hiddenOptionIds: [],
 
   connectAsHost(wsUrl) {
     quizSocket.connect(wsUrl);
@@ -113,7 +119,12 @@ export const useLiveGame = create<LiveGameState>((set, get) => ({
           activeQuestion: msg.payload,
           questionResult: null,
           myAnswer: null,
+          hiddenOptionIds: [],
         });
+        break;
+
+      case "powerup.applied":
+        set({ hiddenOptionIds: msg.payload.hidden_option_ids });
         break;
 
       case "question.end":
@@ -166,6 +177,13 @@ export const useLiveGame = create<LiveGameState>((set, get) => ({
     quizSocket.send({ type: "host.skip_question" });
   },
 
+  usePowerup(type) {
+    const { powerupsLeft, activeQuestion, myAnswer } = get();
+    if (powerupsLeft <= 0 || !activeQuestion || myAnswer) return;
+    set({ powerupsLeft: powerupsLeft - 1 });
+    quizSocket.send({ type: "powerup.use", payload: { type } });
+  },
+
   disconnect() {
     quizSocket.close();
     set({
@@ -178,6 +196,8 @@ export const useLiveGame = create<LiveGameState>((set, get) => ({
       myRank: 0,
       myParticipantId: null,
       finishedPayload: null,
+      powerupsLeft: 1,
+      hiddenOptionIds: [],
     });
   },
 }));

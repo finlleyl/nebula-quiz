@@ -56,6 +56,10 @@ func newRouter(
 			r.Post("/logout", authHandler.Logout)
 		})
 
+		// Public endpoints — no auth required.
+		r.Get("/explore", quizHandler.Explore)
+		r.Get("/categories", quizHandler.ListCategories)
+
 		// Join a game by room code — no auth required (guests allowed).
 		r.Post("/games/by-code/{code}/join", gameHandler.JoinByCode)
 
@@ -64,6 +68,9 @@ func newRouter(
 
 			r.Get("/me/quizzes", quizHandler.ListMyQuizzes)
 			r.Get("/me/history", gameHandler.History)
+			r.Get("/me/library", quizHandler.ListLibrary)
+			r.Post("/me/library/{quiz_id}", quizHandler.SaveToLibrary)
+			r.Delete("/me/library/{quiz_id}", quizHandler.RemoveFromLibrary)
 
 			r.With(middleware.RequireRole("organizer", "admin")).Get("/analytics/overview", analyticsHandler.Overview)
 			r.With(middleware.RequireRole("organizer", "admin")).Post("/quizzes", quizHandler.CreateQuiz)

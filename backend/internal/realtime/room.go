@@ -63,6 +63,12 @@ type Room struct {
 	// Accumulated total scores (participantID → total score)
 	scores map[uuid.UUID]int32
 
+	// Power-up tracking: participantID → remaining power-ups count.
+	// Initialised to 1 per participant when the game starts (spec §13).
+	powerupsLeft map[uuid.UUID]int32
+	// powerupUsedThisQuestion prevents using two power-ups in the same question.
+	powerupUsedThisQuestion map[uuid.UUID]bool
+
 	// Question timer: goroutine closes questionFired when time elapses.
 	// questionCancel cancels the timer goroutine early.
 	questionFired  <-chan struct{}
@@ -82,21 +88,23 @@ func newRoom(
 	db *gen.Queries,
 ) *Room {
 	return &Room{
-		code:        code,
-		roomCode:    roomCode,
-		hub:         hub,
-		sessionID:   sessionID,
-		quizID:      quizID,
-		quizTitle:   quizTitle,
-		totalQs:     totalQs,
-		matchNumber: matchNumber,
-		db:          db,
-		register:    make(chan *Client, 8),
-		unregister:  make(chan *Client, 8),
-		inbound:     make(chan inboundMsg, 64),
-		clients:     make(map[uuid.UUID]*Client),
-		scores:      make(map[uuid.UUID]int32),
-		status:      RoomStatusLobby,
+		code:                    code,
+		roomCode:                roomCode,
+		hub:                     hub,
+		sessionID:               sessionID,
+		quizID:                  quizID,
+		quizTitle:               quizTitle,
+		totalQs:                 totalQs,
+		matchNumber:             matchNumber,
+		db:                      db,
+		register:                make(chan *Client, 8),
+		unregister:              make(chan *Client, 8),
+		inbound:                 make(chan inboundMsg, 64),
+		clients:                 make(map[uuid.UUID]*Client),
+		scores:                  make(map[uuid.UUID]int32),
+		powerupsLeft:            make(map[uuid.UUID]int32),
+		powerupUsedThisQuestion: make(map[uuid.UUID]bool),
+		status:                  RoomStatusLobby,
 	}
 }
 
@@ -186,6 +194,8 @@ func (r *Room) handleMessage(c *Client, env Envelope) {
 		r.handleParticipantReady(c)
 	case MsgAnswerSubmit:
 		r.handleAnswerSubmit(c, env)
+	case MsgPowerupUse:
+		r.handlePowerupUse(c, env)
 	case MsgHostStartGame:
 		r.handleHostStartGame(c)
 	case MsgHostNextQuestion:
@@ -204,6 +214,72 @@ func (r *Room) handleParticipantReady(c *Client) {
 		ParticipantID: c.participantID.String(),
 		Status:        ParticipantReady,
 	})
+}
+
+// ---- power-up ----
+
+func (r *Room) handlePowerupUse(c *Client, env Envelope) {
+	if c.isHost {
+		c.sendMsg(MsgError, ErrorPayload{Code: "forbidden", Message: "host cannot use power-ups"})
+		return
+	}
+	if r.status != RoomStatusInProgress || !r.questionActive {
+		c.sendMsg(MsgError, ErrorPayload{Code: "invalid_state", Message: "no active question"})
+		return
+	}
+	if r.powerupsLeft[c.participantID] <= 0 {
+		c.sendMsg(MsgError, ErrorPayload{Code: "no_powerups", Message: "no power-ups remaining"})
+		return
+	}
+	if r.powerupUsedThisQuestion[c.participantID] {
+		c.sendMsg(MsgError, ErrorPayload{Code: "already_used", Message: "already used a power-up this question"})
+		return
+	}
+
+	var payload PowerupUsePayload
+	if err := jsonUnmarshal(env.Payload, &payload); err != nil {
+		c.sendMsg(MsgError, ErrorPayload{Code: "bad_request", Message: "invalid payload"})
+		return
+	}
+
+	switch payload.Type {
+	case PowerupFiftyFifty:
+		r.applyFiftyFifty(c)
+	default:
+		c.sendMsg(MsgError, ErrorPayload{Code: "unknown_powerup", Message: "unknown power-up type"})
+		return
+	}
+}
+
+// applyFiftyFifty picks 2 incorrect options and sends powerup.applied only to the requesting client.
+func (r *Room) applyFiftyFifty(c *Client) {
+	qwo := r.questions[r.currentIdx]
+	if string(qwo.q.QuestionType) != string(QuestionSingle) {
+		c.sendMsg(MsgError, ErrorPayload{Code: "invalid_powerup", Message: "fifty_fifty only available on single-choice questions"})
+		return
+	}
+
+	// Collect wrong option IDs.
+	wrongIDs := make([]string, 0, 3)
+	for _, opt := range qwo.options {
+		if !opt.IsCorrect {
+			wrongIDs = append(wrongIDs, opt.ID.String())
+		}
+	}
+	// Pick up to 2 to hide (deterministic first two for reproducibility).
+	hidden := wrongIDs
+	if len(hidden) > 2 {
+		hidden = hidden[:2]
+	}
+
+	r.powerupsLeft[c.participantID]--
+	r.powerupUsedThisQuestion[c.participantID] = true
+
+	c.sendMsg(MsgPowerupApplied, PowerupAppliedPayload{
+		Type:            PowerupFiftyFifty,
+		HiddenOptionIDs: hidden,
+	})
+	slog.Info("powerup applied", "room", r.code, "participant", c.participantID, "type", PowerupFiftyFifty)
 }
 
 // ---- host actions ----
@@ -245,6 +321,13 @@ func (r *Room) handleHostStartGame(c *Client) {
 
 	r.status = RoomStatusInProgress
 	_ = r.db.StartGameSession(ctx, r.sessionID)
+
+	// Grant 1 power-up to every connected participant (spec §13).
+	for id, cl := range r.clients {
+		if !cl.isHost {
+			r.powerupsLeft[id] = 1
+		}
+	}
 
 	r.broadcastAll(MsgRoomState, r.buildRoomStatePayload())
 	r.startQuestion(0)
@@ -384,6 +467,7 @@ func (r *Room) startQuestion(idx int) {
 	r.questionActive = true
 	r.questionStartTS = time.Now()
 	r.answers = make(map[uuid.UUID]*playerAnswer)
+	r.powerupUsedThisQuestion = make(map[uuid.UUID]bool)
 
 	qwo := r.questions[idx]
 	timeLimitMS := int(qwo.q.TimeLimitSeconds) * 1000
