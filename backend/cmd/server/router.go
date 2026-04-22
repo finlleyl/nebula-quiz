@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/finlleyl/nebula-quiz/internal/analytics"
 	"github.com/finlleyl/nebula-quiz/internal/auth"
 	"github.com/finlleyl/nebula-quiz/internal/config"
 	"github.com/finlleyl/nebula-quiz/internal/game"
@@ -24,6 +25,7 @@ func newRouter(
 	quizHandler *quiz.Handler,
 	imageHandler *imagestore.Handler,
 	gameHandler *game.Handler,
+	analyticsHandler *analytics.Handler,
 	hub *realtime.Hub,
 ) http.Handler {
 	r := chi.NewRouter()
@@ -61,7 +63,9 @@ func newRouter(
 			r.Use(middleware.RequireAuth(issuer))
 
 			r.Get("/me/quizzes", quizHandler.ListMyQuizzes)
+			r.Get("/me/history", gameHandler.History)
 
+			r.With(middleware.RequireRole("organizer", "admin")).Get("/analytics/overview", analyticsHandler.Overview)
 			r.With(middleware.RequireRole("organizer", "admin")).Post("/quizzes", quizHandler.CreateQuiz)
 			r.Get("/quizzes/{id}", quizHandler.GetQuiz)
 

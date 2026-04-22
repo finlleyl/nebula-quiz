@@ -12,6 +12,7 @@ import PlayerJoinPage from "@/pages/play/PlayerJoinPage";
 import PlayerLobbyPage from "@/pages/play/PlayerLobbyPage";
 import PlayerQuestionPage from "@/pages/play/PlayerQuestionPage";
 import PlayerResultsPage from "@/pages/play/PlayerResultsPage";
+import ReportsPage from "@/pages/reports/ReportsPage";
 import MyQuizzesPage from "@/pages/quizzes/MyQuizzesPage";
 import QuizBuilderPage from "@/pages/quiz-builder/QuizBuilderPage";
 import QuizPreviewPage from "@/pages/quiz-preview/QuizPreviewPage";
@@ -104,6 +105,16 @@ export default function App() {
                 <RequireRole roles={[...organizerRoles]}>
                   <HostResultsPage />
                 </RequireRole>
+              </RequireAuth>
+            }
+          />
+
+          {/* Reports — available to any logged-in user */}
+          <Route
+            path="/reports"
+            element={
+              <RequireAuth>
+                <ReportsPage />
               </RequireAuth>
             }
           />

@@ -10,6 +10,7 @@ import (
 	"github.com/finlleyl/nebula-quiz/internal/storage/gen"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -215,4 +216,68 @@ func (s *Service) GetSession(ctx context.Context, gameID uuid.UUID) (gen.GameSes
 		return gen.GameSession{}, fmt.Errorf("get session: %w", err)
 	}
 	return sess, nil
+}
+
+// HistoryEntry is one row returned by GET /me/history.
+type HistoryEntry struct {
+	SessionID         string  `json:"session_id"`
+	RoomCode          string  `json:"room_code"`
+	MatchNumber       *int32  `json:"match_number"`
+	Status            string  `json:"status"`
+	FinishedAt        *string `json:"finished_at"`
+	QuizTitle         string  `json:"quiz_title"`
+	TotalScore        int32   `json:"total_score"`
+	Rank              int64   `json:"rank"`
+	TotalParticipants int64   `json:"total_participants"`
+}
+
+// ListHistory returns finished game sessions a user participated in.
+func (s *Service) ListHistory(ctx context.Context, userID uuid.UUID) ([]HistoryEntry, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT
+			gs.id,
+			gs.room_code,
+			gs.match_number,
+			gs.status,
+			gs.finished_at,
+			qz.title,
+			gp.total_score,
+			(SELECT COUNT(*) + 1
+			   FROM game_participants x
+			  WHERE x.game_session_id = gs.id
+			    AND x.total_score > gp.total_score)    AS rank,
+			(SELECT COUNT(*)
+			   FROM game_participants x
+			  WHERE x.game_session_id = gs.id)          AS total_participants
+		FROM game_participants gp
+		JOIN game_sessions gs ON gs.id = gp.game_session_id
+		JOIN quizzes qz        ON qz.id = gs.quiz_id
+		WHERE gp.user_id = $1 AND gs.status = 'finished'
+		ORDER BY gs.finished_at DESC NULLS LAST
+		LIMIT 50
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list history: %w", err)
+	}
+	defer rows.Close()
+
+	var entries []HistoryEntry
+	for rows.Next() {
+		var e HistoryEntry
+		var sessionID uuid.UUID
+		var finishedAt pgtype.Timestamptz
+		if err := rows.Scan(
+			&sessionID, &e.RoomCode, &e.MatchNumber, &e.Status,
+			&finishedAt, &e.QuizTitle, &e.TotalScore, &e.Rank, &e.TotalParticipants,
+		); err != nil {
+			return nil, fmt.Errorf("scan history row: %w", err)
+		}
+		e.SessionID = sessionID.String()
+		if finishedAt.Valid {
+			t := finishedAt.Time.Format("2006-01-02T15:04:05Z")
+			e.FinishedAt = &t
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
 }
