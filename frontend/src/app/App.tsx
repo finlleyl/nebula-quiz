@@ -4,6 +4,7 @@ import { RequireAuth } from "@/features/auth/RequireAuth";
 import { RequireRole } from "@/features/auth/RequireRole";
 import { SilentRefresh } from "@/features/auth/SilentRefresh";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
+import ExplorePage from "@/pages/explore/ExplorePage";
 import HostLobbyPage from "@/pages/host/HostLobbyPage";
 import HostQuestionPage from "@/pages/host/HostQuestionPage";
 import HostResultsPage from "@/pages/host/HostResultsPage";
@@ -30,6 +31,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/register" element={<RegisterPage />} />
+
+          {/* Public pages — no auth required */}
+          <Route path="/explore" element={<ExplorePage />} />
 
           {/* Player join flow — no auth required */}
           <Route path="/join" element={<PlayerJoinPage />} />

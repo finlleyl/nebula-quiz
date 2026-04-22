@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useLiveGame } from "@/features/live-game/store";
 import type { GameFinishedPayload } from "@/shared/lib/ws/protocol";
 
@@ -447,7 +448,12 @@ export default function PlayerResultsPage() {
         }}
       >
         {/* Title */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
+        <motion.div
+          initial={{ opacity: 0, y: -24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          style={{ textAlign: "center", marginBottom: 48 }}
+        >
           <h1
             style={{
               fontFamily: "'Space Grotesk', sans-serif",
@@ -474,11 +480,17 @@ export default function PlayerResultsPage() {
               Match #{payload.match_number}
             </p>
           )}
-        </div>
+        </motion.div>
 
-        {/* Podium — 2-1-3 visual order */}
+        {/* Podium — 2-1-3 visual order, with staggered pop-in */}
         {payload && (first || second || third) && (
-          <div
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: {},
+              show: { transition: { staggerChildren: 0.15, delayChildren: 0.3 } },
+            }}
             style={{
               display: "flex",
               justifyContent: "center",
@@ -488,41 +500,36 @@ export default function PlayerResultsPage() {
             }}
           >
             {second && (
-              <PodiumEntry
-                rank={2}
-                nickname={second.nickname}
-                score={second.score}
-                isSelf={myRank === 2}
-              />
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 40 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } } }}
+              >
+                <PodiumEntry rank={2} nickname={second.nickname} score={second.score} isSelf={myRank === 2} />
+              </motion.div>
             )}
             {first && (
-              <PodiumEntry
-                rank={1}
-                nickname={first.nickname}
-                score={first.score}
-                isSelf={myRank === 1}
-              />
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 60, scale: 0.9 }, show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 220, damping: 18 } } }}
+              >
+                <PodiumEntry rank={1} nickname={first.nickname} score={first.score} isSelf={myRank === 1} />
+              </motion.div>
             )}
             {third && (
-              <PodiumEntry
-                rank={3}
-                nickname={third.nickname}
-                score={third.score}
-                isSelf={myRank === 3}
-              />
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 40 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } } }}
+              >
+                <PodiumEntry rank={3} nickname={third.nickname} score={third.score} isSelf={myRank === 3} />
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         )}
 
-        {/* Runner Ups */}
+        {/* Runner Ups — staggered slide-in */}
         {runnerUps.length > 0 && (
-          <div
-            style={{
-              maxWidth: 672,
-              margin: "0 auto 40px",
-            }}
-          >
-            <h2
+          <div style={{ maxWidth: 672, margin: "0 auto 40px" }}>
+            <motion.h2
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontSize: 20,
@@ -532,18 +539,33 @@ export default function PlayerResultsPage() {
               }}
             >
               Runner Ups
-            </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            </motion.h2>
+            <motion.div
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.07, delayChildren: 0.75 } },
+              }}
+              style={{ display: "flex", flexDirection: "column", gap: 8 }}
+            >
               {runnerUps.map((p) => (
-                <RunnerUpRow
+                <motion.div
                   key={`${p.rank}-${p.nickname}`}
-                  rank={p.rank}
-                  nickname={p.nickname}
-                  score={p.score}
-                  isSelf={myRank === p.rank}
-                />
+                  variants={{
+                    hidden: { opacity: 0, x: -20 },
+                    show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+                  }}
+                >
+                  <RunnerUpRow
+                    rank={p.rank}
+                    nickname={p.nickname}
+                    score={p.score}
+                    isSelf={myRank === p.rank}
+                  />
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
         )}
 

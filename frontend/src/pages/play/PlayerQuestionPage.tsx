@@ -3,15 +3,18 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { useLiveGame } from "@/features/live-game/store";
 import { useServerTimer } from "@/features/live-game/hooks";
-import type { QuestionOption, QuestionStartPayload, QuestionEndPayload } from "@/shared/lib/ws/protocol";
+import type { QuestionStartPayload, QuestionEndPayload } from "@/shared/lib/ws/protocol";
 
 const LABELS = ["A", "B", "C", "D"];
 
 export default function PlayerQuestionPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { activeQuestion, questionResult, myAnswer, myScore, finishedPayload, submitAnswer } =
-    useLiveGame();
+  const {
+    activeQuestion, questionResult, myAnswer, myScore, finishedPayload,
+    powerupsLeft, hiddenOptionIds,
+    submitAnswer, usePowerup,
+  } = useLiveGame();
 
   // Navigate to results when game ends.
   useEffect(() => {
@@ -40,7 +43,10 @@ export default function PlayerQuestionPage() {
       questionResult={questionResult}
       myAnswer={myAnswer}
       myScore={myScore}
+      powerupsLeft={powerupsLeft}
+      hiddenOptionIds={hiddenOptionIds}
       onSubmit={submitAnswer}
+      onUsePowerup={() => usePowerup("fifty_fifty")}
     />
   );
 }
@@ -52,7 +58,10 @@ interface PlayerQuestionProps {
   questionResult: QuestionEndPayload | null;
   myAnswer: string[] | null;
   myScore: number;
+  powerupsLeft: number;
+  hiddenOptionIds: string[];
   onSubmit: (optionIds: string[]) => void;
+  onUsePowerup: () => void;
 }
 
 function PlayerQuestion({
@@ -60,7 +69,10 @@ function PlayerQuestion({
   questionResult,
   myAnswer,
   myScore,
+  powerupsLeft,
+  hiddenOptionIds,
   onSubmit,
+  onUsePowerup,
 }: PlayerQuestionProps) {
   const { remainingMs, progress } = useServerTimer(
     activeQuestion.server_ts,
@@ -150,18 +162,20 @@ function PlayerQuestion({
           {activeQuestion.text}
         </p>
 
-        {/* 2×2 answer grid */}
+        {/* 2×2 answer grid — hidden options are faded out (fifty_fifty effect) */}
         <div className="w-full grid grid-cols-2 gap-3">
-          {activeQuestion.options.map((opt: QuestionOption, i: number) => {
+          {activeQuestion.options.map((opt, i) => {
+            const isHidden = hiddenOptionIds.includes(opt.id) && !isRevealing;
             const state = optionState(opt.id);
             const label = LABELS[i] ?? String.fromCharCode(65 + i);
             return (
               <button
                 key={opt.id}
-                disabled={disabled}
+                disabled={disabled || isHidden}
                 onClick={() => onSubmit([opt.id])}
                 className="flex items-center gap-3 rounded-full px-5 py-4 text-left transition-all disabled:cursor-not-allowed"
                 style={{
+                  opacity: isHidden ? 0.25 : 1,
                   background:
                     state === "correct"
                       ? "rgba(52,211,153,0.15)"
@@ -210,6 +224,31 @@ function PlayerQuestion({
             );
           })}
         </div>
+
+        {/* Power-up button — spec §13, bottom-right corner style */}
+        {!isRevealing && !answered && activeQuestion.type === "single" && (
+          <div className="self-end flex items-center gap-2">
+            <button
+              onClick={onUsePowerup}
+              disabled={powerupsLeft <= 0}
+              title={powerupsLeft > 0 ? "50/50: hide 2 wrong answers" : "No power-ups left"}
+              className="relative flex h-12 w-12 items-center justify-center rounded-full text-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                background: powerupsLeft > 0 ? "rgba(255,183,120,0.15)" : "rgba(255,255,255,0.05)",
+                border: powerupsLeft > 0 ? "1.5px solid #FFB778" : "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              ⚡
+              <span
+                className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
+                style={{ background: "#FFB778", color: "#0C0C1F" }}
+              >
+                {powerupsLeft}
+              </span>
+            </button>
+            <span className="text-xs" style={{ color: "#8B8FB8" }}>50/50</span>
+          </div>
+        )}
 
         {/* Feedback */}
         {answered && !isRevealing && (
