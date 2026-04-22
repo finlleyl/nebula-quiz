@@ -18,11 +18,12 @@ interface LiveGameState {
   myAnswer: string[] | null;
   myScore: number;
   myRank: number;
+  myParticipantId: string | null;
   finishedPayload: GameFinishedPayload | null;
 
   // Actions
   connectAsHost: (wsUrl: string) => void;
-  connectAsPlayer: (wsUrl: string) => void;
+  connectAsPlayer: (wsUrl: string, participantId: string) => void;
   handle: (msg: ServerMessage) => void;
   submitAnswer: (optionIds: string[]) => void;
   sendReady: () => void;
@@ -38,6 +39,7 @@ export const useLiveGame = create<LiveGameState>((set, get) => ({
   myAnswer: null,
   myScore: 0,
   myRank: 0,
+  myParticipantId: null,
   finishedPayload: null,
 
   connectAsHost(wsUrl) {
@@ -45,7 +47,8 @@ export const useLiveGame = create<LiveGameState>((set, get) => ({
     quizSocket.on((msg) => get().handle(msg));
   },
 
-  connectAsPlayer(wsUrl) {
+  connectAsPlayer(wsUrl, participantId) {
+    set({ myParticipantId: participantId });
     quizSocket.connect(wsUrl);
     quizSocket.on((msg) => get().handle(msg));
   },
@@ -163,6 +166,7 @@ export const useLiveGame = create<LiveGameState>((set, get) => ({
       myAnswer: null,
       myScore: 0,
       myRank: 0,
+      myParticipantId: null,
       finishedPayload: null,
     });
   },

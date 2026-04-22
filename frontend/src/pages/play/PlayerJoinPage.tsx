@@ -30,7 +30,7 @@ export default function PlayerJoinPage() {
     try {
       const res = await joinGame(trimCode, trimNick);
       const wsUrl = buildWsUrl(res.ws_ticket);
-      connectAsPlayer(wsUrl);
+      connectAsPlayer(wsUrl, res.participant_id);
       navigate(`/play/${trimCode}/lobby`);
     } catch {
       setError("Could not join — check the room code and try again.");

@@ -24,9 +24,9 @@ type Client struct {
 	isGuest       bool
 	nickname      string
 
-	conn  *websocket.Conn
-	room  *Room
-	send  chan []byte
+	conn *websocket.Conn
+	room *Room
+	send chan []byte
 }
 
 func newClient(conn *websocket.Conn, room *Room, td *TicketData) *Client {
@@ -90,18 +90,7 @@ func (c *Client) writePump() {
 				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				return
-			}
-			_, _ = w.Write(msg)
-			// Batch remaining queued messages.
-			n := len(c.send)
-			for range n {
-				_, _ = w.Write([]byte{'\n'})
-				_, _ = w.Write(<-c.send)
-			}
-			if err := w.Close(); err != nil {
+			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 				return
 			}
 

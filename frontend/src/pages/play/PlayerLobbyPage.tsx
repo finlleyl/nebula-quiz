@@ -11,7 +11,7 @@ import { useLiveGame } from "@/features/live-game/store";
 export default function PlayerLobbyPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { roomState, sendReady } = useLiveGame();
+  const { roomState, sendReady, myParticipantId } = useLiveGame();
 
   // When game starts, navigate to the question view.
   useEffect(() => {
@@ -22,6 +22,8 @@ export default function PlayerLobbyPage() {
 
   const participantCount = roomState?.participants.length ?? 0;
   const quizTitle = roomState?.quiz.title ?? "…";
+  const me = roomState?.participants.find((p) => p.id === myParticipantId);
+  const isReady = me?.status === "ready";
 
   return (
     <div
@@ -88,20 +90,30 @@ export default function PlayerLobbyPage() {
       {/* Ready button */}
       <button
         onClick={sendReady}
-        className="rounded-full px-8 py-3 text-base font-semibold transition-all"
-        style={{
-          border: "1px solid rgba(68,68,108,0.30)",
-          color: "#A68CFF",
-          background: "transparent",
+        disabled={isReady}
+        className="rounded-full px-8 py-3 text-base font-semibold transition-all disabled:cursor-not-allowed"
+        style={
+          isReady
+            ? {
+                border: "1px solid rgba(52,211,153,0.40)",
+                color: "#34D399",
+                background: "rgba(52,211,153,0.12)",
+              }
+            : {
+                border: "1px solid rgba(68,68,108,0.30)",
+                color: "#A68CFF",
+                background: "transparent",
+              }
+        }
+        onMouseEnter={(e) => {
+          if (!isReady)
+            e.currentTarget.style.background = "rgba(124,77,255,0.10)";
         }}
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.background = "rgba(124,77,255,0.10)")
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.background = "transparent")
-        }
+        onMouseLeave={(e) => {
+          if (!isReady) e.currentTarget.style.background = "transparent";
+        }}
       >
-        ✓ I'm Ready
+        {isReady ? "✓ You're Ready" : "✓ I'm Ready"}
       </button>
 
       <p className="text-xs" style={{ color: "#5C5E85" }}>
