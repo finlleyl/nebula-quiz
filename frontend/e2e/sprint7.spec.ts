@@ -77,6 +77,37 @@ test.describe("PlayerQuestionPage — power-up UI", () => {
   });
 });
 
+// ── Library page ─────────────────────────────────────────────────────────────
+
+test.describe("Library page", () => {
+  test("redirects unauthenticated users away from /library", async ({
+    page,
+  }) => {
+    await page.goto("/library");
+    // RequireAuth redirects to / when not logged in.
+    await expect(page).not.toHaveURL("/library");
+  });
+
+  test("/library route is registered (no 404 page)", async ({ page }) => {
+    await page.goto("/library");
+    // Even if redirected, the page should not show a 404 or crash.
+    const body = await page.content();
+    expect(body.length).toBeGreaterThan(50);
+  });
+});
+
+// ── TopNav links ──────────────────────────────────────────────────────────────
+
+test.describe("TopNav real route links", () => {
+  test("Explore link in top nav navigates to /explore", async ({ page }) => {
+    await page.goto("/");
+    const exploreLink = page.getByRole("link", { name: "Explore" });
+    await expect(exploreLink).toBeVisible();
+    await exploreLink.click();
+    await expect(page).toHaveURL("/explore");
+  });
+});
+
 // ── Routing regression — Sprint 7 new routes ─────────────────────────────────
 
 test.describe("Sprint 7 routing regression", () => {

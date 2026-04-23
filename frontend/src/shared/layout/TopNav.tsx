@@ -1,13 +1,13 @@
 import { Bell, UserCircle2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
 import { Logo } from "@/shared/ui/Logo";
 
-const navLinks: Array<{ label: string; href: string }> = [
-  { label: "Explore", href: "#" },
-  { label: "Library", href: "#" },
-  { label: "Reports", href: "#" },
-];
+const navLinks = [
+  { label: "Explore", to: "/explore" },
+  { label: "Library", to: "/library" },
+  { label: "Reports", to: "/reports" },
+] as const;
 
 export function TopNav() {
   return (
@@ -18,13 +18,22 @@ export function TopNav() {
         </Link>
         <nav className="hidden gap-8 text-[16px] font-medium text-text-secondary md:flex">
           {navLinks.map((link) => (
-            <a
+            <NavLink
               key={link.label}
-              href={link.href}
-              className="transition-colors hover:text-text-primary"
+              to={link.to}
+              className={({ isActive }) =>
+                isActive
+                  ? "border-b-2 pb-0.5 transition-colors"
+                  : "transition-colors hover:text-text-primary"
+              }
+              style={({ isActive }) =>
+                isActive
+                  ? { borderColor: "#A68CFF", color: "#A68CFF" }
+                  : undefined
+              }
             >
               {link.label}
-            </a>
+            </NavLink>
           ))}
         </nav>
         <div className="flex items-center gap-2 text-text-secondary">

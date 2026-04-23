@@ -70,3 +70,11 @@ export const imagesApi = {
     return api.post("images", { body }).json<ImageUploadResponse>();
   },
 };
+
+export const libraryApi = {
+  list: () => api.get("me/library").json<{ quizzes: QuizDTO[] }>(),
+  save: (quizId: string) =>
+    api.post(`me/library/${quizId}`).then(() => undefined),
+  remove: (quizId: string) =>
+    api.delete(`me/library/${quizId}`).then(() => undefined),
+};
