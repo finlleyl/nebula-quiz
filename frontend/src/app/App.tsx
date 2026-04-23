@@ -17,6 +17,7 @@ import ReportsPage from "@/pages/reports/ReportsPage";
 import MyQuizzesPage from "@/pages/quizzes/MyQuizzesPage";
 import QuizBuilderPage from "@/pages/quiz-builder/QuizBuilderPage";
 import QuizPreviewPage from "@/pages/quiz-preview/QuizPreviewPage";
+import LibraryPage from "@/pages/library/LibraryPage";
 import RegisterPage from "@/pages/register/RegisterPage";
 
 import { QueryProvider } from "./providers/QueryProvider";
@@ -109,6 +110,16 @@ export default function App() {
                 <RequireRole roles={[...organizerRoles]}>
                   <HostResultsPage />
                 </RequireRole>
+              </RequireAuth>
+            }
+          />
+
+          {/* Library — saved quizzes, available to any logged-in user */}
+          <Route
+            path="/library"
+            element={
+              <RequireAuth>
+                <LibraryPage />
               </RequireAuth>
             }
           />
