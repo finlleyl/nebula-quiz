@@ -1,19 +1,16 @@
+import { Check } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useLiveGame } from "@/features/live-game/store";
 
-/**
- * /play/:code/lobby
- *
- * Shown to the player while waiting for the host to start the game.
- * The WS connection has already been established by PlayerJoinPage.
- */
+import { useLiveGame } from "@/features/live-game/store";
+import { Button } from "@/shared/ui/button";
+import { Logo } from "@/shared/ui/Logo";
+
 export default function PlayerLobbyPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { roomState, sendReady, myParticipantId } = useLiveGame();
 
-  // When game starts, navigate to the question view.
   useEffect(() => {
     if (roomState?.status === "in_progress") {
       navigate(`/play/${code}/question`, { replace: true });
@@ -26,98 +23,45 @@ export default function PlayerLobbyPage() {
   const isReady = me?.status === "ready";
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center gap-8 px-4"
-      style={{ background: "#0C0C1F", color: "#E5E3FF" }}
-    >
-      {/* Ambient blob */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: -103,
-          right: -128,
-          width: 512,
-          height: 512,
-          borderRadius: "50%",
-          background: "rgba(141,205,255,0.1)",
-          filter: "blur(50px)",
-          pointerEvents: "none",
-        }}
-      />
+    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-bg-page px-4">
+      <Logo size={32} />
 
-      {/* Status pill */}
-      <span
-        className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase"
-        style={{ background: "rgba(141,205,255,0.10)", color: "#8DCDFF" }}
-      >
-        <span className="h-2 w-2 rounded-full bg-current animate-pulse" />
-        LOBBY OPEN
+      <span className="chip chip-danger px-3.5 py-1.5 text-[13px] uppercase tracking-[0.08em]">
+        <span className="dot" /> Лобби открыто
       </span>
 
-      {/* Quiz title */}
       <div className="text-center">
-        <h1 className="font-display text-3xl font-bold" style={{ color: "#E5E3FF" }}>
+        <h1 className="font-display text-[32px] font-extrabold tracking-[-0.02em]">
           {quizTitle}
         </h1>
-        <p className="mt-2 text-sm" style={{ color: "#8B8FB8" }}>
-          {code && (
-            <>
-              Room{" "}
-              <span className="font-mono font-bold" style={{ color: "#A68CFF" }}>
-                {code}
-              </span>
-            </>
-          )}
+        <p className="mt-2 text-sm text-text-secondary">
+          Комната{" "}
+          <span className="font-mono font-bold text-accent">{code}</span>
         </p>
       </div>
 
-      {/* Participants count */}
-      <div
-        className="rounded-2xl px-8 py-6 text-center"
-        style={{ background: "#111128", border: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div
-          className="font-display text-5xl font-bold"
-          style={{ color: "#8DCDFF" }}
-        >
+      <div className="card px-10 py-6 text-center">
+        <div className="font-display text-5xl font-extrabold text-accent">
           {participantCount}
         </div>
-        <div className="mt-1 text-sm" style={{ color: "#8B8FB8" }}>
-          player{participantCount !== 1 ? "s" : ""} joined
+        <div className="mt-1 text-sm text-text-secondary">
+          {participantCount === 1 ? "участник" : "участников"} в лобби
         </div>
       </div>
 
-      {/* Ready button */}
-      <button
+      <Button
+        size="xl"
         onClick={sendReady}
         disabled={isReady}
-        className="rounded-full px-8 py-3 text-base font-semibold transition-all disabled:cursor-not-allowed"
-        style={
-          isReady
-            ? {
-                border: "1px solid rgba(52,211,153,0.40)",
-                color: "#34D399",
-                background: "rgba(52,211,153,0.12)",
-              }
-            : {
-                border: "1px solid rgba(68,68,108,0.30)",
-                color: "#A68CFF",
-                background: "transparent",
-              }
-        }
-        onMouseEnter={(e) => {
-          if (!isReady)
-            e.currentTarget.style.background = "rgba(124,77,255,0.10)";
-        }}
-        onMouseLeave={(e) => {
-          if (!isReady) e.currentTarget.style.background = "transparent";
-        }}
+        variant={isReady ? "secondary" : "primary"}
+        className={isReady ? "!bg-success-soft !text-success" : "shadow-accent"}
       >
-        {isReady ? "✓ You're Ready" : "✓ I'm Ready"}
-      </button>
+        <Check className="size-[18px]" strokeWidth={3} />
+        {isReady ? "Вы готовы" : "Я готов"}
+      </Button>
 
-      <p className="text-xs" style={{ color: "#5C5E85" }}>
-        Waiting for the host to start the game…
+      <p className="text-xs text-text-tertiary">
+        Ожидаем, пока ведущий запустит игру…
       </p>
     </div>
   );

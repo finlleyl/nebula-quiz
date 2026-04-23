@@ -3,12 +3,14 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { RequireRole } from "@/features/auth/RequireRole";
 import { SilentRefresh } from "@/features/auth/SilentRefresh";
+import AnalyticsPage from "@/pages/analytics/AnalyticsPage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 import ExplorePage from "@/pages/explore/ExplorePage";
 import HostLobbyPage from "@/pages/host/HostLobbyPage";
 import HostQuestionPage from "@/pages/host/HostQuestionPage";
 import HostResultsPage from "@/pages/host/HostResultsPage";
 import LandingPage from "@/pages/landing/LandingPage";
+import LiveSessionsPage from "@/pages/live-sessions/LiveSessionsPage";
 import PlayerJoinPage from "@/pages/play/PlayerJoinPage";
 import PlayerLobbyPage from "@/pages/play/PlayerLobbyPage";
 import PlayerQuestionPage from "@/pages/play/PlayerQuestionPage";
@@ -77,6 +79,27 @@ export default function App() {
               <RequireAuth>
                 <RequireRole roles={[...organizerRoles]}>
                   <QuizBuilderPage />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+
+          <Route
+            path="/sessions"
+            element={
+              <RequireAuth>
+                <RequireRole roles={[...organizerRoles]}>
+                  <LiveSessionsPage />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <RequireAuth>
+                <RequireRole roles={[...organizerRoles]}>
+                  <AnalyticsPage />
                 </RequireRole>
               </RequireAuth>
             }

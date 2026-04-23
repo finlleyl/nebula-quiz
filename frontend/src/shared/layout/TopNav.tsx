@@ -1,57 +1,76 @@
-import { Bell, UserCircle2 } from "lucide-react";
-import { Link, NavLink } from "react-router-dom";
+import { Bell, Search } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
+import { useAuthStore } from "@/features/auth/store";
+import { Avatar } from "@/shared/ui/Avatar";
 import { Logo } from "@/shared/ui/Logo";
+import { cn } from "@/shared/lib/utils";
 
 const navLinks = [
-  { label: "Explore", to: "/explore" },
-  { label: "Library", to: "/library" },
-  { label: "Reports", to: "/reports" },
+  { label: "Главная", to: "/" },
+  { label: "Каталог", to: "/explore" },
+  { label: "Мои игры", to: "/library" },
+  { label: "История", to: "/reports" },
 ] as const;
 
 export function TopNav() {
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const displayName =
+    user && "display_name" in user && user.display_name
+      ? user.display_name
+      : "Гость";
+
   return (
-    <header className="sticky top-0 z-40 border-b border-border-subtle bg-[rgba(12,12,31,0.8)] shadow-[0px_20px_40px_0px_rgba(166,139,255,0.08)] backdrop-blur-xl">
-      <div className="mx-auto flex max-w-[1536px] items-center justify-between px-6 py-4">
-        <Link to="/" aria-label="Nebula Quiz home">
+    <header className="sticky top-0 z-40 h-16 border-b border-divider bg-bg-surface">
+      <div className="flex h-full items-center gap-6 px-6">
+        <Link to="/" aria-label="Квиз.Лайв">
           <Logo />
         </Link>
-        <nav className="hidden gap-8 text-[16px] font-medium text-text-secondary md:flex">
+        <nav className="ml-4 flex items-center gap-1">
           {navLinks.map((link) => (
             <NavLink
               key={link.label}
               to={link.to}
+              end={link.to === "/"}
               className={({ isActive }) =>
-                isActive
-                  ? "border-b-2 pb-0.5 transition-colors"
-                  : "transition-colors hover:text-text-primary"
-              }
-              style={({ isActive }) =>
-                isActive
-                  ? { borderColor: "#A68CFF", color: "#A68CFF" }
-                  : undefined
+                cn(
+                  "rounded-sm px-[14px] py-2 text-sm font-semibold transition-colors",
+                  isActive
+                    ? "bg-accent-softer text-accent"
+                    : "text-text-secondary hover:text-text-primary",
+                )
               }
             >
               {link.label}
             </NavLink>
           ))}
         </nav>
-        <div className="flex items-center gap-2 text-text-secondary">
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="grid place-items-center rounded-pill p-2 transition-colors hover:bg-bg-card hover:text-text-primary"
-          >
-            <Bell className="size-5" />
-          </button>
-          <button
-            type="button"
-            aria-label="Profile"
-            className="grid place-items-center rounded-pill p-2 transition-colors hover:bg-bg-card hover:text-text-primary"
-          >
-            <UserCircle2 className="size-5" />
-          </button>
+        <div className="flex-1" />
+        <div className="relative w-[320px]">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-[18px] -translate-y-1/2 text-text-tertiary"
+          />
+          <input
+            className="input h-10 pl-10"
+            placeholder="Поиск квизов, авторов…"
+          />
         </div>
+        <button
+          type="button"
+          aria-label="Уведомления"
+          className="btn-icon"
+        >
+          <Bell className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Профиль"
+          onClick={() => navigate(user ? "/dashboard" : "/")}
+          className="rounded-pill"
+        >
+          <Avatar name={displayName} size={32} />
+        </button>
       </div>
     </header>
   );

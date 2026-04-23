@@ -49,14 +49,10 @@ export function QuizOverview({
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 rounded-3xl border border-border-subtle bg-bg-card p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg font-semibold text-text-primary">
-          Quiz Overview
-        </h3>
-        <span className="rounded-pill bg-bg-elevated px-3 py-1 text-xs text-text-secondary">
-          {questions.length} Qs
-        </span>
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between px-4 pb-3 pt-4">
+        <h3 className="text-sm font-bold">Вопросы</h3>
+        <span className="chip">{questions.length}</span>
       </div>
 
       <DndContext
@@ -68,7 +64,7 @@ export function QuizOverview({
           items={questions.map((q) => q.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
+          <div className="flex flex-1 flex-col gap-1 overflow-y-auto px-2">
             {questions.map((q, i) => (
               <SortableQuestionRow
                 key={q.id}
@@ -79,23 +75,25 @@ export function QuizOverview({
               />
             ))}
             {questions.length === 0 ? (
-              <p className="py-4 text-center text-sm text-text-muted">
-                No questions yet
+              <p className="py-4 text-center text-sm text-text-secondary">
+                Вопросов пока нет
               </p>
             ) : null}
           </div>
         </SortableContext>
       </DndContext>
 
-      <button
-        type="button"
-        onClick={onAdd}
-        disabled={!canAdd}
-        className="flex items-center justify-center gap-2 rounded-pill border-2 border-dashed border-border px-4 py-3 text-text-secondary transition-colors hover:border-primary-500 hover:text-primary-400 disabled:cursor-wait disabled:opacity-60"
-      >
-        <Plus className="size-4" />
-        {canAdd ? "Add Question" : "Adding…"}
-      </button>
+      <div className="p-3">
+        <button
+          type="button"
+          onClick={onAdd}
+          disabled={!canAdd}
+          className="flex w-full items-center justify-center gap-2 rounded-sm border-[1.5px] border-dashed border-border-strong bg-transparent p-2.5 text-sm font-semibold text-text-secondary disabled:cursor-wait disabled:opacity-60"
+        >
+          <Plus className="size-4" />
+          {canAdd ? "Добавить вопрос" : "Добавляем…"}
+        </button>
+      </div>
     </div>
   );
 }

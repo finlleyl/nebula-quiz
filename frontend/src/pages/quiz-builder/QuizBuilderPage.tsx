@@ -1,4 +1,4 @@
-import { ArrowLeft, Eye, Settings } from "lucide-react";
+import { ArrowLeft, Eye, Pencil, Play, Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -95,73 +95,100 @@ export default function QuizBuilderPage() {
 
   if (isLoading) {
     return (
-      <div className="grid min-h-screen place-items-center bg-bg-primary text-text-secondary">
-        Loading quiz…
+      <div className="grid min-h-screen place-items-center bg-bg-page text-text-secondary">
+        Загружаем квиз…
       </div>
     );
   }
   if (error || !data) {
     return (
-      <div className="grid min-h-screen place-items-center bg-bg-primary text-accent-error">
-        Failed to load quiz.
+      <div className="grid min-h-screen place-items-center bg-bg-page text-danger">
+        Не удалось загрузить квиз.
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <header className="sticky top-0 z-20 border-b border-border-subtle bg-bg-primary/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1536px] items-center gap-6 px-6 py-4">
-          <button
-            type="button"
-            onClick={() => navigate("/quizzes")}
-            className="inline-flex items-center gap-2 rounded-pill px-3 py-2 text-sm text-text-secondary hover:bg-bg-card hover:text-text-primary"
-          >
-            <ArrowLeft className="size-4" />
-            Back to My Quizzes
-          </button>
-
-          <div className="flex-1 min-w-0">
+    <div className="flex min-h-screen flex-col bg-bg-page">
+      <header className="flex h-[72px] items-center gap-4 border-b border-divider bg-bg-surface px-8">
+        <button
+          type="button"
+          onClick={() => navigate("/quizzes")}
+          className="btn-icon"
+          aria-label="Назад"
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex items-center gap-2.5">
             <input
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
               onBlur={handleTitleBlur}
-              placeholder="Untitled quiz"
-              className="w-full truncate bg-transparent font-display text-[28px] font-bold text-text-primary placeholder:text-text-muted focus:outline-none"
+              placeholder="Без названия"
+              className="bg-transparent text-lg font-bold text-text-primary focus:outline-none"
             />
-            <p className="mt-1 text-sm text-text-muted">
-              {data.quiz.is_published ? "Published" : "Editing Draft"} ·{" "}
-              {data.questions.length} Questions
-            </p>
+            <Pencil className="size-3.5 text-text-tertiary" />
           </div>
-
-          <Button
-            variant={view === "settings" ? "primary" : "outline"}
-            size="md"
-            className="gap-2"
-            onClick={() => setView(view === "settings" ? "question" : "settings")}
-          >
-            <Settings className="size-4" />
-            {view === "settings" ? "Editing" : "Settings"}
-          </Button>
-          <Button variant="outline" size="md" className="gap-2" asChild>
-            <Link to={`/quizzes/${data.quiz.id}`}>
-              <Eye className="size-4" />
-              Preview
-            </Link>
-          </Button>
-          <Button
-            size="md"
-            onClick={handlePublish}
-            disabled={publishQuiz.isPending}
-          >
-            {data.quiz.is_published ? "Unpublish" : "Publish Quiz"}
-          </Button>
+          <div className="flex items-center gap-2 text-xs text-text-secondary">
+            <span
+              className={
+                data.quiz.is_published ? "chip chip-success" : "chip chip-warn"
+              }
+            >
+              {data.quiz.is_published ? "Опубликован" : "Черновик"}
+            </span>
+            <span>
+              {data.questions.length} вопросов · Авто-сохранение
+            </span>
+          </div>
         </div>
+        <div className="flex-1" />
+        <Button
+          variant={view === "settings" ? "primary" : "secondary"}
+          onClick={() =>
+            setView(view === "settings" ? "question" : "settings")
+          }
+        >
+          <Settings className="size-4" />
+          {view === "settings" ? "К вопросам" : "Настройки"}
+        </Button>
+        <Button variant="secondary" asChild>
+          <Link to={`/quizzes/${data.quiz.id}`}>
+            <Eye className="size-4" /> Предпросмотр
+          </Link>
+        </Button>
+        <Button variant="secondary">
+          <Play className="size-3.5" /> Запустить
+        </Button>
+        <Button
+          onClick={handlePublish}
+          disabled={publishQuiz.isPending}
+          className="shadow-accent"
+        >
+          {data.quiz.is_published ? "Снять с публикации" : "Опубликовать"}
+        </Button>
       </header>
 
-      <main className="mx-auto grid max-w-[1536px] grid-cols-1 gap-6 px-6 py-8 lg:grid-cols-[1fr_360px]">
-        <section>
+      <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[300px_1fr_340px]">
+        <aside className="overflow-auto border-r border-divider bg-bg-surface">
+          <QuizOverview
+            questions={data.questions}
+            activeId={view === "question" ? activeId : null}
+            onSelect={(id) => {
+              setActiveId(id);
+              setView("question");
+            }}
+            onAdd={async () => {
+              setView("question");
+              await handleAddQuestion();
+            }}
+            onReorder={(order) => reorder.mutate(order)}
+            canAdd={!createQuestion.isPending}
+          />
+        </aside>
+
+        <main className="overflow-auto px-10 py-7">
           {view === "settings" ? (
             <QuizSettingsPanel quiz={data.quiz} />
           ) : activeQuestion ? (
@@ -185,34 +212,19 @@ export default function QuizBuilderPage() {
               onDelete={handleDeleteActive}
             />
           ) : (
-            <div className="grid place-items-center rounded-[24px] border border-dashed border-border bg-bg-card/40 py-24 text-text-secondary">
+            <div className="grid place-items-center rounded-lg border-2 border-dashed border-border-strong bg-bg-surface py-24 text-text-secondary">
               <div className="text-center">
-                <p className="font-display text-2xl font-bold text-text-primary">
-                  No questions yet
+                <p className="font-display text-xl font-bold text-text-primary">
+                  Вопросов пока нет
                 </p>
-                <p className="mt-2">Add one from the panel on the right.</p>
+                <p className="mt-1 text-sm">
+                  Добавьте вопрос из панели слева.
+                </p>
               </div>
             </div>
           )}
-        </section>
-
-        <aside className="lg:h-[calc(100vh-140px)] lg:sticky lg:top-[96px]">
-          <QuizOverview
-            questions={data.questions}
-            activeId={view === "question" ? activeId : null}
-            onSelect={(id) => {
-              setActiveId(id);
-              setView("question");
-            }}
-            onAdd={async () => {
-              setView("question");
-              await handleAddQuestion();
-            }}
-            onReorder={(order) => reorder.mutate(order)}
-            canAdd={!createQuestion.isPending}
-          />
-        </aside>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

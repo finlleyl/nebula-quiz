@@ -1,49 +1,68 @@
 /*
- * Nebula Quiz design tokens — mirror of spec §3 and Figma node 1:776.
- * Hex values live here as CSS variables for any raw-CSS consumer; the
- * Tailwind config (tailwind.config.ts) mirrors the same values so
- * utility classes like `bg-primary-500` resolve consistently.
- *
- * Keep this file and tailwind.config.ts in lockstep.
+ * Квиз.Лайв — дизайн-токены (light VK-style).
+ * Источник правды: handoff bundle из Claude Design
+ * (vk-quiz/project/styles.css). При расхождении с tailwind.config.ts
+ * держим их в синхроне.
  */
 
 :root {
-  /* --- Backgrounds ---------------------------------------------- */
-  --bg-primary:     #0C0C1F;
-  --bg-secondary:   #12132B;
-  --bg-card:        #111128;
-  --bg-elevated:    #222247;
-  --bg-input:       #0F1127;
+  /* --- Фоны ----------------------------------------------------- */
+  --bg-page:     #EBEEF2;
+  --bg-surface:  #FFFFFF;
+  --bg-muted:    #F2F4F7;
+  --bg-hover:    #E8ECF1;
+  --bg-sidebar:  #FFFFFF;
 
-  /* --- Brand ---------------------------------------------------- */
-  --primary-500:    #7C4DFF;
-  --primary-600:    #6B3FEB;
-  --primary-400:    #A68CFF;
-  --primary-glow:   rgba(166, 139, 255, 0.20);
+  /* --- Акценты -------------------------------------------------- */
+  --accent:        #0077FF;
+  --accent-hover:  #0066DB;
+  --accent-soft:   #E5F0FF;
+  --accent-softer: #F0F6FF;
+  --accent-text:   #0077FF;
 
-  /* --- Accents -------------------------------------------------- */
-  --accent-cyan:    #8DCDFF;
-  --accent-amber:   #FFB778;
-  --accent-orange:  #FB923C;
-  --accent-success: #34D399;
-  --accent-error:   #EF4444;
+  /* --- Доп. акценты --------------------------------------------- */
+  --success:      #4BB34B;
+  --success-soft: #E6F4E6;
+  --warning:      #FF9900;
+  --warning-soft: #FFF4E0;
+  --danger:       #E64646;
+  --danger-soft:  #FCE9E9;
+  --gold:         #FFB922;
+  --silver:       #B4BEC7;
+  --bronze:       #D08B5A;
 
-  /* --- Text ----------------------------------------------------- */
-  --text-primary:   #E5E3FF;
-  --text-secondary: #A8A7D5;
-  --text-muted:     #8B8FB8;
-  --text-placeholder: #5C5E85;
+  /* --- Текст ---------------------------------------------------- */
+  --text-primary:     #0D1A2B;
+  --text-secondary:   #6D7885;
+  --text-tertiary:    #99A2AD;
+  --text-on-accent:   #FFFFFF;
+  --text-placeholder: #B8C1CC;
 
-  /* --- Borders -------------------------------------------------- */
-  --border-subtle:  rgba(255, 255, 255, 0.06);
-  --border-default: rgba(68, 68, 108, 0.30);
-  --border-focus:   var(--primary-500);
+  /* --- Бордеры и разделители ------------------------------------ */
+  --border:        rgba(13, 26, 43, 0.08);
+  --border-strong: rgba(13, 26, 43, 0.14);
+  --divider:       rgba(13, 26, 43, 0.06);
 
-  /* --- Typography ---------------------------------------------- */
-  --font-display: 'Space Grotesk', ui-sans-serif, sans-serif;
-  --font-body:    'Plus Jakarta Sans', ui-sans-serif, sans-serif;
+  /* --- Радиусы -------------------------------------------------- */
+  --r-xs:   8px;
+  --r-sm:   10px;
+  --r-md:   14px;
+  --r-lg:   20px;
+  --r-xl:   28px;
+  --r-pill: 999px;
+
+  /* --- Тени ----------------------------------------------------- */
+  --shadow-card:   0 1px 0 rgba(13,26,43,0.04), 0 2px 8px rgba(13,26,43,0.04);
+  --shadow-elev:   0 4px 16px rgba(13,26,43,0.08);
+  --shadow-pop:    0 8px 32px rgba(13,26,43,0.12);
+  --shadow-accent: 0 8px 24px rgba(0,119,255,0.28);
+
+  /* --- Шрифты --------------------------------------------------- */
+  --font-ui:      'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-display: 'Manrope', 'Inter', sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
 
+  /* --- Размеры шрифта ------------------------------------------ */
   --text-xs:   12px;
   --text-sm:   14px;
   --text-base: 16px;
@@ -51,25 +70,5 @@
   --text-xl:   24px;
   --text-2xl:  32px;
   --text-3xl:  48px;
-  --text-4xl:  80px;
-  --text-mega: 120px;
-
-  /* --- Radii & shadows ----------------------------------------- */
-  --radius-sm:   8px;
-  --radius-md:   12px;
-  --radius-lg:   16px;
-  --radius-xl:   20px;
-  --radius-3xl:  32px;
-  --radius-2xl:  48px;
-  --radius-pill: 9999px;
-
-  --shadow-glow-primary: 0 10px 20px 0 var(--primary-glow);
-  --shadow-row-elevated: 0 10px 20px 0 rgba(0, 0, 0, 0.30);
-  --shadow-podium:       0 20px 40px 0 rgba(0, 0, 0, 0.50);
-  --shadow-podium-gold:  0 20px 40px 0 rgba(166, 139, 255, 0.20);
-  --shadow-card:         0 4px 24px rgba(0, 0, 0, 0.35);
-
-  /* --- Gradients ----------------------------------------------- */
-  --gradient-primary: linear-gradient(180deg, #A68CFF 0%, #7C4DFF 100%);
-  --gradient-logo:    linear-gradient(168deg, #A68CFF 0%, #7C4DFF 100%);
+  --text-4xl:  64px;
 }

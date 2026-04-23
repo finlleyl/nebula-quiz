@@ -1,10 +1,11 @@
-import { Image as ImageIcon, X } from "lucide-react";
+import { Image as ImageIcon, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { SaveIndicator } from "@/features/quiz-builder/SaveIndicator";
 import { useDebouncedSave } from "@/features/quiz-builder/useDebouncedSave";
 import { useImageUpload, useUpdateQuiz } from "@/features/quizzes/hooks";
 import type { QuizDTO } from "@/features/quizzes/types";
+import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/Textarea";
 
 interface Props {
@@ -20,7 +21,9 @@ export function QuizSettingsPanel({ quiz }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [description, setDescription] = useState(quiz.description ?? "");
-  const [coverUrl, setCoverUrl] = useState<string | null>(quiz.cover_url ?? null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(
+    quiz.cover_url ?? null,
+  );
   const [imageError, setImageError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,71 +31,64 @@ export function QuizSettingsPanel({ quiz }: Props) {
     setCoverUrl(quiz.cover_url ?? null);
   }, [quiz.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const status = useDebouncedSave(
-    { description, coverUrl },
-    async (v) => {
-      // Empty string signals clear on the backend (nullable-clearing
-      // convention in service.UpdateQuiz).
-      await updateQuiz.mutateAsync({
-        description: v.description,
-        cover_url: v.coverUrl ?? "",
-      });
-    },
-  );
+  const status = useDebouncedSave({ description, coverUrl }, async (v) => {
+    await updateQuiz.mutateAsync({
+      description: v.description,
+      cover_url: v.coverUrl ?? "",
+    });
+  });
 
   const onPickImage = () => fileInputRef.current?.click();
   const onImageFile = async (file: File | undefined) => {
     setImageError(null);
     if (!file) return;
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      setImageError("Only JPEG, PNG or WebP.");
+      setImageError("Только JPEG, PNG или WebP.");
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      setImageError("Image must be under 5 MB.");
+      setImageError("Файл не должен превышать 5 МБ.");
       return;
     }
     try {
       const res = await imageUpload.mutateAsync(file);
       setCoverUrl(res.url);
     } catch {
-      setImageError("Upload failed. Try again.");
+      setImageError("Загрузка не удалась.");
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[720px] space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-xl font-bold text-text-primary">
-          Quiz Settings
-        </h2>
+        <h2 className="font-display text-xl font-bold">Настройки квиза</h2>
         <SaveIndicator status={status} />
       </div>
 
-      <div className="space-y-5 rounded-3xl border border-border-subtle bg-bg-card p-6">
-        <p className="text-sm text-text-muted">
-          Title is edited inline in the header above.
+      <div className="card space-y-5 p-6">
+        <p className="text-sm text-text-secondary">
+          Название редактируется в шапке страницы.
         </p>
 
         <div>
-          <label className="mb-2 block text-sm font-semibold uppercase tracking-wider text-text-muted">
-            Description
+          <label className="mb-2 block text-[13px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+            Описание
           </label>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What is this quiz about?"
+            placeholder="О чём этот квиз?"
             rows={4}
             maxLength={2000}
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-semibold uppercase tracking-wider text-text-muted">
-            Cover image
+          <label className="mb-2 block text-[13px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+            Обложка
           </label>
           {coverUrl ? (
-            <div className="relative overflow-hidden rounded-[16px] border border-border-subtle">
+            <div className="relative overflow-hidden rounded-md border border-border">
               <img
                 src={coverUrl}
                 alt=""
@@ -101,25 +97,36 @@ export function QuizSettingsPanel({ quiz }: Props) {
               <button
                 type="button"
                 onClick={() => setCoverUrl(null)}
-                aria-label="Remove cover"
-                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-bg-primary/80 text-text-primary hover:bg-accent-error"
+                aria-label="Удалить обложку"
+                className="btn-icon absolute right-2 top-2 size-8 !bg-white/80"
               >
                 <X className="size-4" />
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={onPickImage}
-              disabled={imageUpload.isPending}
-              className="flex w-full items-center justify-center gap-3 rounded-[16px] border-2 border-dashed border-border bg-bg-input px-6 py-10 text-text-secondary transition-colors hover:border-primary-500 hover:text-primary-400 disabled:opacity-50"
-            >
-              <ImageIcon className="size-5" />
-              {imageUpload.isPending ? "Uploading…" : "Upload cover (5 MB max)"}
-            </button>
+            <div className="placeholder-img h-[120px] rounded-md">
+              Cover · 1600×900
+            </div>
           )}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onPickImage}
+            disabled={imageUpload.isPending}
+            className="mt-2.5 w-full"
+          >
+            {imageUpload.isPending ? (
+              <>
+                <Upload className="size-4" /> Загрузка…
+              </>
+            ) : (
+              <>
+                <ImageIcon className="size-4" /> Загрузить (до 5 МБ)
+              </>
+            )}
+          </Button>
           {imageError ? (
-            <p className="mt-2 text-sm text-accent-error">{imageError}</p>
+            <p className="mt-2 text-sm text-danger">{imageError}</p>
           ) : null}
           <input
             ref={fileInputRef}

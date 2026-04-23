@@ -218,6 +218,139 @@ func (s *Service) GetSession(ctx context.Context, gameID uuid.UUID) (gen.GameSes
 	return sess, nil
 }
 
+// ActiveSessionEntry is one row returned by GET /me/sessions.
+type ActiveSessionEntry struct {
+	SessionID        string  `json:"session_id"`
+	RoomCode         string  `json:"room_code"`
+	MatchNumber      *int32  `json:"match_number"`
+	Status           string  `json:"status"`
+	CreatedAt        string  `json:"created_at"`
+	StartedAt        *string `json:"started_at"`
+	QuizID           string  `json:"quiz_id"`
+	QuizTitle        string  `json:"quiz_title"`
+	ParticipantCount int64   `json:"participant_count"`
+}
+
+// ListActiveHostSessions returns lobby/in-progress sessions for a host.
+func (s *Service) ListActiveHostSessions(ctx context.Context, hostID uuid.UUID) ([]ActiveSessionEntry, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT
+			gs.id, gs.room_code, gs.match_number, gs.status,
+			gs.created_at, gs.started_at,
+			gs.quiz_id, qz.title,
+			(SELECT COUNT(*) FROM game_participants gp WHERE gp.game_session_id = gs.id) AS participant_count
+		FROM game_sessions gs
+		JOIN quizzes qz ON qz.id = gs.quiz_id
+		WHERE gs.host_id = $1 AND gs.status IN ('lobby', 'in_progress')
+		ORDER BY gs.created_at DESC
+		LIMIT 100
+	`, hostID)
+	if err != nil {
+		return nil, fmt.Errorf("list active sessions: %w", err)
+	}
+	defer rows.Close()
+
+	var entries []ActiveSessionEntry
+	for rows.Next() {
+		var e ActiveSessionEntry
+		var sessionID, quizID uuid.UUID
+		var createdAt pgtype.Timestamptz
+		var startedAt pgtype.Timestamptz
+		if err := rows.Scan(
+			&sessionID, &e.RoomCode, &e.MatchNumber, &e.Status,
+			&createdAt, &startedAt, &quizID, &e.QuizTitle, &e.ParticipantCount,
+		); err != nil {
+			return nil, fmt.Errorf("scan active session row: %w", err)
+		}
+		e.SessionID = sessionID.String()
+		e.QuizID = quizID.String()
+		if createdAt.Valid {
+			e.CreatedAt = createdAt.Time.Format("2006-01-02T15:04:05Z")
+		}
+		if startedAt.Valid {
+			t := startedAt.Time.Format("2006-01-02T15:04:05Z")
+			e.StartedAt = &t
+		}
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
+}
+
+// ResumeResult is returned from ResumeSession with a fresh host WS ticket.
+type ResumeResult struct {
+	GameID      uuid.UUID
+	RoomCode    string
+	MatchNumber int32
+	Status      string
+	WSTicket    string
+}
+
+// ResumeSession re-issues a host WS ticket for an existing active session.
+// Ensures the room exists in the hub (recreates with metadata if dropped).
+func (s *Service) ResumeSession(ctx context.Context, sessionID, hostID uuid.UUID) (*ResumeResult, error) {
+	sess, err := s.q.GetGameSessionByID(ctx, sessionID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrSessionNotFound
+		}
+		return nil, fmt.Errorf("get session: %w", err)
+	}
+	if sess.HostID != hostID {
+		return nil, ErrForbidden
+	}
+	if sess.Status == gen.GameStatusFinished {
+		return nil, ErrSessionNotInLobby
+	}
+
+	hostUser, err := s.q.GetUserByID(ctx, hostID)
+	if err != nil {
+		return nil, fmt.Errorf("get host user: %w", err)
+	}
+
+	// Recreate room in hub if it's been dropped (server restart, idle cleanup).
+	if s.hub.GetRoom(sess.ID.String()) == nil {
+		quizRow, err := s.q.GetQuizByID(ctx, sess.QuizID)
+		if err != nil {
+			return nil, fmt.Errorf("get quiz: %w", err)
+		}
+		questions, err := s.q.ListQuestionsByQuiz(ctx, sess.QuizID)
+		if err != nil {
+			return nil, fmt.Errorf("list questions: %w", err)
+		}
+		matchNum := int32(0)
+		if sess.MatchNumber != nil {
+			matchNum = *sess.MatchNumber
+		}
+		s.hub.CreateRoom(sess.ID, sess.QuizID, quizRow.Title, len(questions), sess.RoomCode, matchNum)
+	}
+
+	participantID := uuid.New()
+	ticket, err := s.tickets.Issue(ctx, realtime.TicketData{
+		UserID:        &hostID,
+		SessionID:     sess.ID,
+		ParticipantID: participantID,
+		IsHost:        true,
+		IsGuest:       false,
+		Nickname:      hostUser.DisplayName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("issue host ticket: %w", err)
+	}
+
+	matchNum := int32(0)
+	if sess.MatchNumber != nil {
+		matchNum = *sess.MatchNumber
+	}
+
+	return &ResumeResult{
+		GameID:      sess.ID,
+		RoomCode:    sess.RoomCode,
+		MatchNumber: matchNum,
+		Status:      string(sess.Status),
+		WSTicket:    ticket,
+	}, nil
+}
+
 // HistoryEntry is one row returned by GET /me/history.
 type HistoryEntry struct {
 	SessionID         string  `json:"session_id"`

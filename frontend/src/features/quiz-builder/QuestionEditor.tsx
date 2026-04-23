@@ -29,7 +29,8 @@ interface Props {
   onDelete: () => void;
 }
 
-const letterFor = (i: number) => String.fromCharCode("A".charCodeAt(0) + i);
+const letterFor = (i: number) =>
+  ["A", "Б", "В", "Г", "Д", "Е", "Ж", "З", "И", "К"][i] ?? `${i + 1}`;
 
 export function QuestionEditor({ orderIdx, question, onSave, onDelete }: Props) {
   const [text, setText] = useState(question.text);
@@ -43,7 +44,6 @@ export function QuestionEditor({ orderIdx, question, onSave, onDelete }: Props) 
   const [points, setPoints] = useState(question.points);
   const [options, setOptions] = useState<AnswerOptionDTO[]>(question.options);
 
-  // Re-sync local state when switching between questions.
   useEffect(() => {
     setText(question.text);
     setImageUrl(question.image_url ?? null);
@@ -53,8 +53,6 @@ export function QuestionEditor({ orderIdx, question, onSave, onDelete }: Props) 
     setOptions(question.options);
   }, [question.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Coerce single-choice to exactly one correct option.
-  // If none is currently correct, default to the first.
   useEffect(() => {
     if (questionType !== "single") return;
     if (options.length === 0) return;
@@ -96,18 +94,18 @@ export function QuestionEditor({ orderIdx, question, onSave, onDelete }: Props) 
     setImageError(null);
     if (!file) return;
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      setImageError("Only JPEG, PNG or WebP.");
+      setImageError("Только JPEG, PNG или WebP.");
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      setImageError("Image must be under 5 MB.");
+      setImageError("Файл не должен превышать 5 МБ.");
       return;
     }
     try {
       const res = await imageUpload.mutateAsync(file);
       setImageUrl(res.url);
     } catch {
-      setImageError("Upload failed. Try again.");
+      setImageError("Загрузка не удалась. Попробуйте снова.");
     }
   };
 
@@ -130,38 +128,43 @@ export function QuestionEditor({ orderIdx, question, onSave, onDelete }: Props) 
     setOptions((prev) => [...prev, { text: "", is_correct: false }]);
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[720px] space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Badge tone="primary">{orderIdx + 1}</Badge>
-          <h2 className="font-display text-xl font-bold text-text-primary">
-            Question Editor
-          </h2>
+          <div className="grid size-9 place-items-center rounded-md bg-accent font-display text-base font-extrabold text-white">
+            {orderIdx + 1}
+          </div>
+          <h2 className="font-display text-base font-bold">Вопрос</h2>
+          <Badge tone="primary">
+            {questionType === "single"
+              ? "1 правильный ответ"
+              : "Несколько правильных"}
+          </Badge>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <SaveIndicator status={status} />
           <button
             type="button"
             onClick={onDelete}
-            aria-label="Delete question"
-            className="rounded-pill p-2 text-text-muted transition-colors hover:bg-accent-error/15 hover:text-accent-error"
+            aria-label="Удалить вопрос"
+            className="btn-icon"
           >
-            <Trash2 className="size-5" />
+            <Trash2 className="size-[18px]" />
           </button>
         </div>
       </div>
 
-      <div className="relative rounded-[24px] border border-border-subtle bg-bg-card p-6">
+      <div className="card p-7">
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Type your question here..."
+          placeholder="Введите текст вопроса…"
           rows={4}
-          className="border-transparent bg-transparent text-lg focus-visible:ring-0"
+          className="font-display text-lg font-semibold !bg-bg-muted"
         />
 
         {imageUrl ? (
-          <div className="relative mt-4 overflow-hidden rounded-[16px] border border-border-subtle">
+          <div className="relative mt-4 overflow-hidden rounded-md border border-border">
             <img
               src={imageUrl}
               alt=""
@@ -170,17 +173,21 @@ export function QuestionEditor({ orderIdx, question, onSave, onDelete }: Props) 
             <button
               type="button"
               onClick={() => setImageUrl(null)}
-              aria-label="Remove image"
-              className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-bg-primary/80 text-text-primary hover:bg-accent-error"
+              aria-label="Удалить изображение"
+              className="btn-icon absolute right-2 top-2 size-8 !bg-white/80"
             >
               <X className="size-4" />
             </button>
           </div>
-        ) : null}
+        ) : (
+          <div className="placeholder-img mt-4 h-[160px] rounded-md">
+            Фото · можно перетащить сюда
+          </div>
+        )}
 
         <div className="mt-4 flex items-center justify-end gap-3">
           {imageError ? (
-            <span className="text-sm text-accent-error">{imageError}</span>
+            <span className="text-sm text-danger">{imageError}</span>
           ) : null}
           <input
             ref={fileInputRef}
@@ -193,37 +200,36 @@ export function QuestionEditor({ orderIdx, question, onSave, onDelete }: Props) 
             type="button"
             onClick={onPickImage}
             disabled={imageUpload.isPending}
-            aria-label="Attach image"
-            className="rounded-pill p-2 text-text-muted transition-colors hover:bg-primary-500/15 hover:text-primary-400 disabled:opacity-50"
+            aria-label="Прикрепить изображение"
+            className="btn-icon"
           >
-            <ImageIcon className="size-5" />
+            <ImageIcon className="size-[18px]" />
           </button>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {options.map((opt, i) => (
-          <OptionRow
-            key={opt.id ?? i}
-            letter={letterFor(i)}
-            text={opt.text}
-            isCorrect={opt.is_correct}
-            questionType={questionType}
-            onTextChange={(v) => setOptionText(i, v)}
-            onToggleCorrect={() => toggleCorrect(i)}
-            onRemove={options.length > 2 ? () => removeOption(i) : undefined}
-          />
-        ))}
-        {options.length < 10 ? (
-          <button
-            type="button"
-            onClick={addOption}
-            className="flex items-center justify-center gap-2 rounded-pill border-2 border-dashed border-border px-4 py-3 text-text-secondary hover:border-primary-500 hover:text-primary-400"
-          >
-            <Plus className="size-4" />
-            Add Option
-          </button>
-        ) : null}
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          {options.map((opt, i) => (
+            <OptionRow
+              key={opt.id ?? i}
+              letter={letterFor(i)}
+              text={opt.text}
+              isCorrect={opt.is_correct}
+              questionType={questionType}
+              onTextChange={(v) => setOptionText(i, v)}
+              onToggleCorrect={() => toggleCorrect(i)}
+              onRemove={options.length > 2 ? () => removeOption(i) : undefined}
+            />
+          ))}
+          {options.length < 10 ? (
+            <button
+              type="button"
+              onClick={addOption}
+              className="col-span-full flex items-center justify-center gap-2 rounded-md border-[1.5px] border-dashed border-border-strong bg-transparent p-3.5 text-sm font-semibold text-text-secondary"
+            >
+              <Plus className="size-4" /> Добавить вариант ответа
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <QuestionSettings

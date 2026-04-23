@@ -4,36 +4,29 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/shared/lib/utils";
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
-  {
-    variants: {
-      variant: {
-        primary:
-          "bg-gradient-primary text-white shadow-glow-primary hover:brightness-110 active:brightness-95",
-        outline:
-          "border border-primary-500 bg-transparent text-primary-400 hover:bg-primary-500/10",
-        secondary:
-          "bg-bg-card text-text-primary border border-border hover:bg-bg-elevated",
-        ghost:
-          "bg-transparent text-text-secondary hover:bg-bg-card hover:text-text-primary",
-        link: "bg-transparent text-primary-400 underline-offset-4 hover:underline",
-        destructive:
-          "bg-accent-error text-white hover:brightness-110",
-      },
-      size: {
-        sm: "h-9 px-4 text-sm rounded-pill",
-        md: "h-11 px-6 text-base rounded-pill",
-        lg: "h-14 px-8 text-lg rounded-pill",
-        icon: "h-11 w-11 rounded-pill",
-      },
+const buttonVariants = cva("btn", {
+  variants: {
+    variant: {
+      primary:   "btn-primary",
+      outline:   "btn-secondary",
+      secondary: "btn-secondary",
+      ghost:     "btn-ghost",
+      link:      "btn-ghost !px-0 !h-auto",
+      destructive: "btn-danger",
     },
-    defaultVariants: {
-      variant: "primary",
-      size: "md",
+    size: {
+      sm:   "btn-sm",
+      md:   "",
+      lg:   "btn-lg",
+      xl:   "btn-xl",
+      icon: "btn-icon",
     },
   },
-);
+  defaultVariants: {
+    variant: "primary",
+    size: "md",
+  },
+});
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
@@ -47,7 +40,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <Comp
         ref={ref}
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size }), className)}
         {...props}
       />
     );

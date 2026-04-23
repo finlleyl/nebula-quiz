@@ -30,6 +30,34 @@ export function joinGame(
     .json();
 }
 
+export interface ActiveSession {
+  session_id: string;
+  room_code: string;
+  match_number: number | null;
+  status: "lobby" | "in_progress";
+  created_at: string;
+  started_at: string | null;
+  quiz_id: string;
+  quiz_title: string;
+  participant_count: number;
+}
+
+export interface ResumeGameResponse {
+  game_id: string;
+  room_code: string;
+  match_number: number;
+  status: "lobby" | "in_progress";
+  ws_ticket: string;
+}
+
+export function listActiveSessions(): Promise<ActiveSession[]> {
+  return api.get("me/sessions").json<ActiveSession[]>();
+}
+
+export function resumeGame(sessionId: string): Promise<ResumeGameResponse> {
+  return api.post(`games/${sessionId}/resume`).json<ResumeGameResponse>();
+}
+
 /** Build the WebSocket URL from a short-lived ticket. */
 export function buildWsUrl(ticket: string): string {
   const base =

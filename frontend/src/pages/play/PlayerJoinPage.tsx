@@ -1,14 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { joinGame, buildWsUrl } from "@/features/live-game/api";
-import { useLiveGame } from "@/features/live-game/store";
 
-/**
- * /join/:code?
- *
- * Lets a player enter (or confirm) a room code and pick a nickname,
- * then connects to the WS lobby.
- */
+import { buildWsUrl, joinGame } from "@/features/live-game/api";
+import { useLiveGame } from "@/features/live-game/store";
+import { Button } from "@/shared/ui/button";
+import { Logo } from "@/shared/ui/Logo";
+
 export default function PlayerJoinPage() {
   const { code: paramCode } = useParams<{ code?: string }>();
   const navigate = useNavigate();
@@ -33,145 +30,72 @@ export default function PlayerJoinPage() {
       connectAsPlayer(wsUrl, res.participant_id);
       navigate(`/play/${trimCode}/lobby`);
     } catch {
-      setError("Could not join — check the room code and try again.");
+      setError("Не удалось войти — проверьте код и попробуйте снова.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center px-4"
-      style={{ background: "#0C0C1F" }}
-    >
-      {/* Ambient background blobs */}
-      <div
-        style={{
-          position: "fixed",
-          top: -103,
-          left: -128,
-          width: 640,
-          height: 640,
-          borderRadius: "50%",
-          background: "rgba(166,140,255,0.1)",
-          filter: "blur(50px)",
-          pointerEvents: "none",
-        }}
-      />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-bg-page px-4">
+      <div className="mb-8">
+        <Logo size={36} />
+      </div>
 
-      {/* Logo */}
-      <span
-        className="mb-10 font-display text-2xl font-bold uppercase tracking-widest"
-        style={{
-          backgroundImage: "linear-gradient(168deg, #A68CFF 0%, #7C4DFF 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
-        }}
-      >
-        NEBULA QUIZ
-      </span>
+      <form onSubmit={handleJoin} className="card w-full max-w-md p-8 shadow-elev">
+        <h1 className="font-display text-2xl font-extrabold">
+          Войти в игру
+        </h1>
+        <p className="mt-1.5 text-sm text-text-secondary">
+          Без регистрации. Достаточно кода от ведущего.
+        </p>
 
-      {/* Card */}
-      <form
-        onSubmit={handleJoin}
-        className="w-full max-w-md rounded-2xl p-8 flex flex-col gap-6"
-        style={{
-          background: "#111128",
-          border: "1px solid rgba(255,255,255,0.06)",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.35)",
-        }}
-      >
-        <div>
-          <h1
-            className="font-display text-2xl font-bold mb-1"
-            style={{ color: "#E5E3FF" }}
-          >
-            Join a Game
-          </h1>
-          <p className="text-sm" style={{ color: "#8B8FB8" }}>
-            No account required. Just enter the code.
-          </p>
-        </div>
-
-        {/* Room code input */}
-        <div className="flex flex-col gap-2">
-          <label
-            className="text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#8B8FB8" }}
-          >
-            Room Code
-          </label>
+        <div className="field mt-6">
+          <label className="field-label">Код комнаты</label>
           <input
             type="text"
             value={roomCode}
             onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-            placeholder="ABC-XYZ"
-            maxLength={7}
+            placeholder="XXX-XXXX"
+            maxLength={8}
             spellCheck={false}
             autoCapitalize="characters"
-            className="w-full rounded-xl px-4 py-3 font-mono text-xl font-bold tracking-widest text-center outline-none transition-all"
+            className="input input-lg text-center"
             style={{
-              background: "#0F1127",
-              color: "#E5E3FF",
-              border: "1px solid rgba(68,68,108,0.30)",
+              fontFamily: "var(--font-mono)",
+              fontWeight: 700,
+              fontSize: 22,
+              letterSpacing: "0.1em",
             }}
-            onFocus={(e) =>
-              (e.currentTarget.style.borderColor = "#7C4DFF")
-            }
-            onBlur={(e) =>
-              (e.currentTarget.style.borderColor = "rgba(68,68,108,0.30)")
-            }
           />
         </div>
 
-        {/* Nickname input */}
-        <div className="flex flex-col gap-2">
-          <label
-            className="text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#8B8FB8" }}
-          >
-            Your Nickname
-          </label>
+        <div className="field mt-4">
+          <label className="field-label">Ник</label>
           <input
             type="text"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
-            placeholder="e.g. AstroAlex"
+            placeholder="Как вас звать"
             maxLength={32}
-            className="w-full rounded-xl px-4 py-3 text-base outline-none transition-all"
-            style={{
-              background: "#0F1127",
-              color: "#E5E3FF",
-              border: "1px solid rgba(68,68,108,0.30)",
-            }}
-            onFocus={(e) =>
-              (e.currentTarget.style.borderColor = "#7C4DFF")
-            }
-            onBlur={(e) =>
-              (e.currentTarget.style.borderColor = "rgba(68,68,108,0.30)")
-            }
+            className="input"
           />
         </div>
 
-        {error && (
-          <p className="text-sm rounded-lg px-4 py-3" style={{ background: "rgba(239,68,68,0.1)", color: "#EF4444" }}>
+        {error ? (
+          <p className="mt-3 rounded-sm bg-danger-soft px-3 py-2 text-sm text-danger">
             {error}
           </p>
-        )}
+        ) : null}
 
-        <button
+        <Button
           type="submit"
+          size="xl"
+          className="mt-6 w-full shadow-accent"
           disabled={loading || !roomCode.trim() || !nickname.trim()}
-          className="w-full rounded-full py-4 text-base font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{
-            backgroundImage: "linear-gradient(180deg, #A68CFF 0%, #7C4DFF 100%)",
-            color: "#FFFFFF",
-            boxShadow: "0 10px 20px 0 rgba(166,139,255,0.20)",
-          }}
         >
-          {loading ? "Joining…" : "Enter Room"}
-        </button>
+          {loading ? "Входим…" : "Войти в комнату"}
+        </Button>
       </form>
     </div>
   );

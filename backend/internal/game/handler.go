@@ -116,6 +116,67 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(entries)
 }
 
+// GET /api/v1/me/sessions
+func (h *Handler) ActiveSessions(w http.ResponseWriter, r *http.Request) {
+	hostID, ok := middleware.UserID(r)
+	if !ok {
+		httpapi.WriteProblem(w, http.StatusUnauthorized, "unauthorized", "")
+		return
+	}
+
+	entries, err := h.svc.ListActiveHostSessions(r.Context(), hostID)
+	if err != nil {
+		httpapi.WriteProblem(w, http.StatusInternalServerError, "internal error", err.Error())
+		return
+	}
+	if entries == nil {
+		entries = []ActiveSessionEntry{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(entries)
+}
+
+// POST /api/v1/games/:id/resume
+// Returns: { "game_id", "room_code", "match_number", "status", "ws_ticket" }
+func (h *Handler) Resume(w http.ResponseWriter, r *http.Request) {
+	hostID, ok := middleware.UserID(r)
+	if !ok {
+		httpapi.WriteProblem(w, http.StatusUnauthorized, "unauthorized", "")
+		return
+	}
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		httpapi.WriteProblem(w, http.StatusBadRequest, "invalid id", "")
+		return
+	}
+
+	res, err := h.svc.ResumeSession(r.Context(), id, hostID)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrSessionNotFound):
+			httpapi.WriteProblem(w, http.StatusNotFound, "session not found", "")
+		case errors.Is(err, ErrForbidden):
+			httpapi.WriteProblem(w, http.StatusForbidden, "forbidden", "you are not the host")
+		case errors.Is(err, ErrSessionNotInLobby):
+			httpapi.WriteProblem(w, http.StatusConflict, "session already finished", "")
+		default:
+			httpapi.WriteProblem(w, http.StatusInternalServerError, "internal error", err.Error())
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"game_id":      res.GameID,
+		"room_code":    res.RoomCode,
+		"match_number": res.MatchNumber,
+		"status":       res.Status,
+		"ws_ticket":    res.WSTicket,
+	})
+}
+
 // POST /api/v1/games/by-code/:code/join
 // Body: { "nickname": "...", "avatar_url": "..." }
 // Returns: { "game_id", "participant_id", "room_code", "ws_ticket" }

@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { DraftQuizCard } from "@/features/quizzes/DraftQuizCard";
@@ -32,55 +33,63 @@ export default function MyQuizzesPage() {
   }, [data?.items, status, sort]);
 
   return (
-    <div className="flex min-h-screen bg-bg-primary">
+    <div className="flex min-h-screen bg-bg-page">
       <DashboardSidebar />
 
-      <main className="flex-1 px-10 py-10">
-        <header className="mb-8 flex items-end justify-between">
-          <div>
-            <h1 className="font-display text-[40px] font-bold leading-tight text-text-primary">
-              My Quizzes
-            </h1>
-            <p className="mt-2 text-text-secondary">
-              {data ? `${data.total} total` : "Loading…"}
-            </p>
-          </div>
-        </header>
-
-        <div className="mb-8 flex flex-wrap items-center gap-4">
-          <SegmentedControl<StatusFilter>
-            value={status}
-            onChange={setStatus}
-            options={[
-              { value: "all", label: "All" },
-              { value: "draft", label: "Drafts" },
-              { value: "published", label: "Published" },
-            ]}
-          />
-          <SegmentedControl<SortBy>
-            value={sort}
-            onChange={setSort}
-            options={[
-              { value: "recent", label: "Recent" },
-              { value: "plays", label: "Most played" },
-              { value: "title", label: "Title A–Z" },
-            ]}
-          />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex h-16 items-center gap-4 border-b border-divider bg-bg-surface px-8">
+          <div className="text-[15px] text-text-tertiary">Кабинет</div>
+          <ChevronRight className="size-3.5 text-text-tertiary" />
+          <div className="text-[15px] font-semibold">Мои квизы</div>
         </div>
 
-        {isLoading ? (
-          <p className="text-text-secondary">Loading quizzes…</p>
-        ) : error ? (
-          <p className="text-accent-error">Failed to load quizzes.</p>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
-            {items.map((q) => (
-              <QuizCard key={q.id} quiz={q} />
-            ))}
-            <DraftQuizCard />
+        <main className="flex-1 overflow-auto p-8">
+          <div className="mb-6 flex items-end justify-between">
+            <div>
+              <h1 className="font-display text-[28px] font-extrabold tracking-[-0.02em]">
+                Мои квизы
+              </h1>
+              <p className="mt-1 text-sm text-text-secondary">
+                {data ? `Всего: ${data.total}` : "Загружаем…"}
+              </p>
+            </div>
           </div>
-        )}
-      </main>
+
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <SegmentedControl<StatusFilter>
+              value={status}
+              onChange={setStatus}
+              options={[
+                { value: "all", label: "Все" },
+                { value: "draft", label: "Черновики" },
+                { value: "published", label: "Опубликованные" },
+              ]}
+            />
+            <SegmentedControl<SortBy>
+              value={sort}
+              onChange={setSort}
+              options={[
+                { value: "recent", label: "По дате" },
+                { value: "plays", label: "По запускам" },
+                { value: "title", label: "По названию" },
+              ]}
+            />
+          </div>
+
+          {isLoading ? (
+            <p className="text-text-secondary">Загружаем…</p>
+          ) : error ? (
+            <p className="text-danger">Не удалось загрузить квизы.</p>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+              {items.map((q) => (
+                <QuizCard key={q.id} quiz={q} />
+              ))}
+              <DraftQuizCard />
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

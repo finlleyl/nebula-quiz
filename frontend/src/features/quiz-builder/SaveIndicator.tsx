@@ -6,24 +6,24 @@ export function SaveIndicator({ status }: { status: SaveStatus }) {
   if (status === "idle") return null;
   if (status === "saving") {
     return (
-      <span className="inline-flex items-center gap-2 text-sm text-text-muted">
+      <span className="inline-flex items-center gap-1.5 text-sm text-text-secondary">
         <Loader2 className="size-4 animate-spin" />
-        Saving…
+        Сохраняем…
       </span>
     );
   }
   if (status === "saved") {
     return (
-      <span className="inline-flex items-center gap-2 text-sm text-accent-success">
+      <span className="inline-flex items-center gap-1.5 text-sm text-success">
         <Check className="size-4" />
-        Saved
+        Сохранено
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-2 text-sm text-accent-error">
+    <span className="inline-flex items-center gap-1.5 text-sm text-danger">
       <CircleAlert className="size-4" />
-      Save failed
+      Не сохранилось
     </span>
   );
 }

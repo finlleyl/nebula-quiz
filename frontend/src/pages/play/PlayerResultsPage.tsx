@@ -1,165 +1,210 @@
-import { useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Bell } from "lucide-react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+
 import { useLiveGame } from "@/features/live-game/store";
 import type { GameFinishedPayload } from "@/shared/lib/ws/protocol";
+import { Avatar } from "@/shared/ui/Avatar";
+import { Button } from "@/shared/ui/button";
+import { Logo } from "@/shared/ui/Logo";
 
-// ── Podium entry component ────────────────────────────────────────────────────
+export default function PlayerResultsPage() {
+  const navigate = useNavigate();
+  const { finishedPayload, myRank, myScore, disconnect } = useLiveGame();
 
-function PodiumEntry({
-  rank,
-  nickname,
-  score,
-  isSelf,
-}: {
-  rank: 1 | 2 | 3;
-  nickname: string;
-  score: number;
-  isSelf: boolean;
-}) {
-  const configs = {
-    1: {
-      width: 220,
-      height: 224,
-      bg: "linear-gradient(180deg, #A68CFF 0%, #7C4DFF 100%)",
-      shadow: "0 20px 40px 0 rgba(166,139,255,0.20)",
-      avatarSize: 96,
-      avatarBorder: "4px solid #FFB778",
-      rankSize: 48,
-      rankColor: "#FFFFFF",
-      scoreColor: "#FFB778",
-      scoreFontSize: 18,
-      zIndex: 2,
-    },
-    2: {
-      width: 200,
-      height: 160,
-      bg: "#1C1C3D",
-      shadow: "0 20px 40px 0 rgba(0,0,0,0.50)",
-      avatarSize: 80,
-      avatarBorder: "4px solid #111128",
-      rankSize: 36,
-      rankColor: "#A8A7D5",
-      scoreColor: "#8DCDFF",
-      scoreFontSize: 16,
-      zIndex: 1,
-    },
-    3: {
-      width: 200,
-      height: 128,
-      bg: "#1C1C3D",
-      shadow: "0 20px 40px 0 rgba(0,0,0,0.50)",
-      avatarSize: 80,
-      avatarBorder: "4px solid #111128",
-      rankSize: 30,
-      rankColor: "#A8A7D5",
-      scoreColor: "#8DCDFF",
-      scoreFontSize: 16,
-      zIndex: 1,
-    },
-  } as const;
+  function handleExit() {
+    disconnect();
+    navigate("/", { replace: true });
+  }
 
-  const c = configs[rank];
-  const initials = nickname.slice(0, 2).toUpperCase();
+  const payload: GameFinishedPayload | null = finishedPayload;
+  const allEntries = payload ? [...payload.podium, ...payload.runner_ups] : [];
+  const first = payload?.podium.find((p) => p.rank === 1);
+  const second = payload?.podium.find((p) => p.rank === 2);
+  const third = payload?.podium.find((p) => p.rank === 3);
+  const runnerUps = allEntries.filter((p) => p.rank > 3);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "flex-end",
-        position: "relative",
-        zIndex: c.zIndex,
-      }}
-    >
-      {/* Crown for 1st place */}
-      {rank === 1 && (
-        <div style={{ marginBottom: 4, fontSize: 24 }}>👑</div>
-      )}
-
-      {/* Avatar */}
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-bg-page">
       <div
+        aria-hidden
+        className="pointer-events-none absolute -left-48 -top-48 size-[640px] rounded-full"
         style={{
-          width: c.avatarSize,
-          height: c.avatarSize,
-          borderRadius: "50%",
-          background: isSelf ? "#7C4DFF" : "#222247",
-          border: c.avatarBorder,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: rank === 1 ? 20 : 16,
-          fontWeight: 700,
-          color: "#E5E3FF",
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          marginBottom: 8,
-          flexShrink: 0,
+          background:
+            "radial-gradient(circle, rgba(0,119,255,0.18), transparent 70%)",
         }}
-      >
-        {initials}
-      </div>
-
-      {/* Name */}
+      />
       <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-36 -right-36 size-[500px] rounded-full"
         style={{
-          color: "#E5E3FF",
-          fontSize: 14,
-          fontWeight: 600,
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          marginBottom: 4,
-          textAlign: "center",
-          maxWidth: c.width - 16,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
+          background:
+            "radial-gradient(circle, rgba(255,185,34,0.15), transparent 70%)",
         }}
-      >
-        {nickname}
-      </div>
+      />
 
-      {/* Podium block */}
-      <div
-        style={{
-          width: c.width,
-          height: c.height,
-          background: c.bg,
-          boxShadow: c.shadow,
-          borderRadius: "24px 24px 0 0",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 4,
-        }}
-      >
-        <div
-          style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: c.rankSize,
-            fontWeight: 700,
-            color: c.rankColor,
-          }}
+      <header className="relative z-10 flex h-16 items-center gap-4 border-b border-divider bg-bg-surface/80 px-8 backdrop-blur">
+        <Logo />
+        <div className="flex-1" />
+        <button type="button" className="btn-icon" aria-label="Уведомления">
+          <Bell className="size-5" />
+        </button>
+      </header>
+
+      <main className="relative z-10 mx-auto w-full max-w-[1100px] flex-1 px-6 py-10">
+        <motion.div
+          initial={{ opacity: 0, y: -24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="mb-10 text-center"
         >
-          {rank}
+          <span className="chip chip-success mb-3.5">
+            <span className="dot" /> Матч завершён
+          </span>
+          <h1 className="font-display text-[56px] font-extrabold leading-[1.05] tracking-[-0.03em]">
+            Игра завершена
+          </h1>
+          {payload ? (
+            <p className="mt-2.5 text-base text-text-secondary">
+              Матч №{payload.match_number}
+            </p>
+          ) : null}
+        </motion.div>
+
+        {payload && (first || second || third) ? (
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: {},
+              show: {
+                transition: { staggerChildren: 0.15, delayChildren: 0.3 },
+              },
+            }}
+            className="mx-auto mb-12 flex max-w-[780px] items-end gap-4"
+          >
+            <PodiumColumn place={2} entry={second} isSelf={myRank === 2} />
+            <PodiumColumn place={1} entry={first} isSelf={myRank === 1} big />
+            <PodiumColumn place={3} entry={third} isSelf={myRank === 3} />
+          </motion.div>
+        ) : null}
+
+        {runnerUps.length > 0 ? (
+          <div className="card mx-auto max-w-[720px] p-5">
+            <h3 className="mb-3.5 font-display text-lg font-bold">
+              Остальные игроки
+            </h3>
+            <div className="flex flex-col gap-1.5">
+              {runnerUps.map((p) => (
+                <RunnerRow
+                  key={`${p.rank}-${p.nickname}`}
+                  rank={p.rank}
+                  nickname={p.nickname}
+                  score={p.score}
+                  isSelf={myRank === p.rank}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {payload && myRank > 0 && !allEntries.some((p) => p.rank === myRank) ? (
+          <div className="mx-auto mt-6 max-w-[720px]">
+            <RunnerRow rank={myRank} nickname="Вы" score={myScore} isSelf />
+          </div>
+        ) : null}
+
+        <div className="mx-auto mt-9 flex max-w-[500px] gap-3">
+          <Button
+            variant="secondary"
+            size="xl"
+            className="flex-1"
+            onClick={handleExit}
+          >
+            <ArrowLeft className="size-[18px]" /> Выйти
+          </Button>
+          <Button
+            size="xl"
+            className="flex-[2] shadow-accent"
+            onClick={handleExit}
+          >
+            Сыграть ещё раз <ArrowRight className="size-[18px]" />
+          </Button>
         </div>
+      </main>
+    </div>
+  );
+}
+
+type Entry = { rank: number; nickname: string; score: number } | undefined;
+
+function PodiumColumn({
+  place,
+  entry,
+  isSelf,
+  big = false,
+}: {
+  place: 1 | 2 | 3;
+  entry: Entry;
+  isSelf: boolean;
+  big?: boolean;
+}) {
+  if (!entry) return <div className="flex-1" />;
+  const h = place === 1 ? 220 : place === 2 ? 160 : 130;
+  const bg =
+    place === 1
+      ? "linear-gradient(180deg, #0077FF, #004DA8)"
+      : "var(--bg-surface)";
+  const fontColor = place === 1 ? "#fff" : "var(--text-primary)";
+  const medal =
+    place === 1 ? "var(--gold)" : place === 2 ? "var(--silver)" : "var(--bronze)";
+
+  return (
+    <div className="flex flex-1 flex-col items-center gap-3.5">
+      <div className="relative">
+        <Avatar
+          name={entry.nickname}
+          size={big ? 96 : 64}
+          ring={place === 1}
+        />
         <div
-          style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: c.scoreFontSize,
-            fontWeight: 700,
-            color: c.scoreColor,
-          }}
+          className="absolute -bottom-2 left-1/2 grid size-8 -translate-x-1/2 place-items-center rounded-full border-[3px] border-white font-display text-sm font-extrabold text-white"
+          style={{ background: medal }}
         >
-          {score.toLocaleString()}
+          {place}
         </div>
+      </div>
+      <div className="text-center">
+        <div className="text-base font-bold">
+          {entry.nickname}
+          {isSelf ? " (Вы)" : ""}
+        </div>
+        <div className="font-mono text-sm font-bold text-text-secondary">
+          {entry.score.toLocaleString("ru-RU")}
+        </div>
+      </div>
+      <div
+        className="flex w-full items-center justify-center rounded-t-lg font-display font-extrabold tracking-[-0.02em]"
+        style={{
+          height: h,
+          background: bg,
+          color: fontColor,
+          fontSize: place === 1 ? 64 : 48,
+          boxShadow:
+            place === 1
+              ? "0 20px 40px rgba(0,119,255,0.3)"
+              : "var(--shadow-card)",
+          border: place !== 1 ? "1px solid var(--border)" : "none",
+          borderBottom: "none",
+        }}
+      >
+        {place}
       </div>
     </div>
   );
 }
 
-// ── Runner-up row ─────────────────────────────────────────────────────────────
-
-function RunnerUpRow({
+function RunnerRow({
   rank,
   nickname,
   score,
@@ -170,463 +215,32 @@ function RunnerUpRow({
   score: number;
   isSelf: boolean;
 }) {
-  const initials = nickname.slice(0, 2).toUpperCase();
-
-  if (isSelf) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderRadius: 48,
-          background: "#222247",
-          border: "1px solid rgba(68,68,108,0.30)",
-          boxShadow: "0 10px 20px 0 rgba(0,0,0,0.30)",
-          padding: "17px 20px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
-            style={{
-              width: 32,
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              fontSize: 16,
-              fontWeight: 600,
-              color: "#A68CFF",
-            }}
-          >
-            #{rank}
-          </span>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              background: "#7C4DFF",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 13,
-              fontWeight: 700,
-              color: "#FFFFFF",
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-            }}
-          >
-            YOU
-          </div>
-          <span
-            style={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: "#E5E3FF",
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-            }}
-          >
-            {nickname}
-          </span>
-        </div>
-        <span
-          style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: 16,
-            fontWeight: 700,
-            color: "#A68CFF",
-          }}
-        >
-          {score.toLocaleString()}
-        </span>
-      </div>
-    );
-  }
-
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        borderRadius: 48,
-        background: "#111128",
-        border: "1px solid rgba(255,255,255,0.06)",
-        padding: "16px 20px",
-      }}
+      className={`flex items-center gap-3.5 rounded-md p-3.5 ${isSelf ? "bg-accent-softer ring-1 ring-accent/25" : "bg-bg-muted"}`}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span
-          style={{
-            width: 32,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontSize: 16,
-            fontWeight: 500,
-            color: "#A8A7D5",
-          }}
-        >
-          #{rank}
-        </span>
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            background: "#222247",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 13,
-            fontWeight: 600,
-            color: "#A8A7D5",
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-          }}
-        >
-          {initials}
-        </div>
-        <span
-          style={{
-            fontSize: 16,
-            fontWeight: 500,
-            color: "#E5E3FF",
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-          }}
-        >
-          {nickname}
-        </span>
+      <div
+        className={`w-8 text-center font-display text-base font-extrabold ${isSelf ? "text-accent" : "text-text-secondary"}`}
+      >
+        {rank}
       </div>
+      {isSelf ? (
+        <div className="grid size-10 place-items-center rounded-full bg-accent text-[11px] font-extrabold text-white">
+          ВЫ
+        </div>
+      ) : (
+        <Avatar name={nickname} size={40} />
+      )}
       <span
-        style={{
-          fontFamily: "'Space Grotesk', sans-serif",
-          fontSize: 16,
-          fontWeight: 700,
-          color: "#8DCDFF",
-        }}
+        className={`flex-1 text-[15px] ${isSelf ? "font-bold" : "font-semibold"}`}
       >
-        {score.toLocaleString()}
+        {nickname}
       </span>
-    </div>
-  );
-}
-
-// ── Main page ─────────────────────────────────────────────────────────────────
-
-export default function PlayerResultsPage() {
-  const navigate = useNavigate();
-  const { finishedPayload, myRank, myScore, disconnect } = useLiveGame();
-
-  function handlePlayAgain() {
-    disconnect();
-    navigate("/", { replace: true });
-  }
-
-  function handleExit() {
-    disconnect();
-    navigate("/", { replace: true });
-  }
-
-  const payload: GameFinishedPayload | null = finishedPayload;
-
-  // Build ordered list: podium (1,2,3) + runner_ups
-  const allEntries = payload
-    ? [...payload.podium, ...payload.runner_ups]
-    : [];
-
-  // Podium slots in visual order: 2nd, 1st, 3rd
-  const first  = payload?.podium.find((p) => p.rank === 1);
-  const second = payload?.podium.find((p) => p.rank === 2);
-  const third  = payload?.podium.find((p) => p.rank === 3);
-
-  // Runner Ups = rank 4+
-  const runnerUps = allEntries.filter((p) => p.rank > 3);
-
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#0C0C1F",
-        color: "#E5E3FF",
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-        overflowX: "hidden",
-        position: "relative",
-      }}
-    >
-      {/* ── Ambient blobs ── */}
-      <div
-        style={{
-          position: "fixed",
-          top: -103,
-          left: -128,
-          width: 640,
-          height: 640,
-          borderRadius: "50%",
-          background: "rgba(166,140,255,0.10)",
-          filter: "blur(50px)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-      <div
-        style={{
-          position: "fixed",
-          bottom: -103,
-          right: -128,
-          width: 512,
-          height: 512,
-          borderRadius: "50%",
-          background: "rgba(141,205,255,0.10)",
-          filter: "blur(50px)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-
-      {/* ── Top nav ── */}
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          backdropFilter: "blur(12px)",
-          background: "rgba(12,12,31,0.80)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          padding: "0 24px",
-          height: 64,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          maxWidth: "100%",
-        }}
+      <span
+        className={`font-mono text-lg font-bold ${isSelf ? "text-accent" : ""}`}
       >
-        <span
-          style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontWeight: 700,
-            fontSize: 18,
-            letterSpacing: "0.1em",
-            backgroundImage: "linear-gradient(168deg, #A68CFF 0%, #7C4DFF 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
-          NEBULA QUIZ
-        </span>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 0,
-            background: "#111128",
-            borderRadius: 9999,
-            padding: "6px 4px",
-          }}
-        >
-          {["Explore", "Library", "Reports"].map((link) => (
-            <span
-              key={link}
-              style={{
-                padding: "6px 16px",
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#A8A7D5",
-                cursor: "pointer",
-                borderRadius: 9999,
-              }}
-            >
-              {link}
-            </span>
-          ))}
-        </div>
-      </nav>
-
-      {/* ── Content ── */}
-      <main
-        style={{
-          maxWidth: 1280,
-          margin: "0 auto",
-          padding: "48px 24px",
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        {/* Title */}
-        <motion.div
-          initial={{ opacity: 0, y: -24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          style={{ textAlign: "center", marginBottom: 48 }}
-        >
-          <h1
-            style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: 60,
-              fontWeight: 700,
-              letterSpacing: "-1.5px",
-              color: "#E5E3FF",
-              margin: 0,
-              lineHeight: 1.1,
-            }}
-          >
-            Match Complete
-          </h1>
-          {payload && (
-            <p
-              style={{
-                marginTop: 12,
-                fontSize: 18,
-                fontWeight: 400,
-                color: "#A8A7D5",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-              }}
-            >
-              Match #{payload.match_number}
-            </p>
-          )}
-        </motion.div>
-
-        {/* Podium — 2-1-3 visual order, with staggered pop-in */}
-        {payload && (first || second || third) && (
-          <motion.div
-            initial="hidden"
-            animate="show"
-            variants={{
-              hidden: {},
-              show: { transition: { staggerChildren: 0.15, delayChildren: 0.3 } },
-            }}
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "flex-end",
-              gap: 8,
-              marginBottom: 56,
-            }}
-          >
-            {second && (
-              <motion.div
-                variants={{ hidden: { opacity: 0, y: 40 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } } }}
-              >
-                <PodiumEntry rank={2} nickname={second.nickname} score={second.score} isSelf={myRank === 2} />
-              </motion.div>
-            )}
-            {first && (
-              <motion.div
-                variants={{ hidden: { opacity: 0, y: 60, scale: 0.9 }, show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 220, damping: 18 } } }}
-              >
-                <PodiumEntry rank={1} nickname={first.nickname} score={first.score} isSelf={myRank === 1} />
-              </motion.div>
-            )}
-            {third && (
-              <motion.div
-                variants={{ hidden: { opacity: 0, y: 40 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } } }}
-              >
-                <PodiumEntry rank={3} nickname={third.nickname} score={third.score} isSelf={myRank === 3} />
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Runner Ups — staggered slide-in */}
-        {runnerUps.length > 0 && (
-          <div style={{ maxWidth: 672, margin: "0 auto 40px" }}>
-            <motion.h2
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 20,
-                fontWeight: 700,
-                color: "#A8A7D5",
-                marginBottom: 16,
-              }}
-            >
-              Runner Ups
-            </motion.h2>
-            <motion.div
-              initial="hidden"
-              animate="show"
-              variants={{
-                hidden: {},
-                show: { transition: { staggerChildren: 0.07, delayChildren: 0.75 } },
-              }}
-              style={{ display: "flex", flexDirection: "column", gap: 8 }}
-            >
-              {runnerUps.map((p) => (
-                <motion.div
-                  key={`${p.rank}-${p.nickname}`}
-                  variants={{
-                    hidden: { opacity: 0, x: -20 },
-                    show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-                  }}
-                >
-                  <RunnerUpRow
-                    rank={p.rank}
-                    nickname={p.nickname}
-                    score={p.score}
-                    isSelf={myRank === p.rank}
-                  />
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        )}
-
-        {/* Current player info if not in top 3 / runner-ups visible */}
-        {payload && myRank > 0 && !allEntries.some((p) => p.rank === myRank) && (
-          <div style={{ maxWidth: 672, margin: "0 auto 40px" }}>
-            <RunnerUpRow
-              rank={myRank}
-              nickname="You"
-              score={myScore}
-              isSelf={true}
-            />
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div
-          style={{
-            maxWidth: 448,
-            margin: "0 auto",
-            display: "flex",
-            gap: 16,
-          }}
-        >
-          <button
-            onClick={handlePlayAgain}
-            style={{
-              flex: 1,
-              borderRadius: 48,
-              background: "linear-gradient(180deg, #A68CFF 0%, #7C4DFF 100%)",
-              boxShadow: "0 10px 20px 0 rgba(166,139,255,0.20)",
-              color: "#FFFFFF",
-              fontSize: 16,
-              fontWeight: 700,
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              padding: "16px 24px",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            Play Again
-          </button>
-          <button
-            onClick={handleExit}
-            style={{
-              flex: 1,
-              borderRadius: 48,
-              background: "transparent",
-              border: "1px solid rgba(68,68,108,0.15)",
-              color: "#8DCDFF",
-              fontSize: 16,
-              fontWeight: 700,
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              padding: "16px 24px",
-              cursor: "pointer",
-            }}
-          >
-            Exit Match
-          </button>
-        </div>
-      </main>
+        {score.toLocaleString("ru-RU")}
+      </span>
     </div>
   );
 }

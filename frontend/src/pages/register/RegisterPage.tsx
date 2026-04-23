@@ -1,39 +1,39 @@
 import { Link } from "react-router-dom";
 
 import { RegisterForm } from "@/features/auth/RegisterForm";
-import { TopNav } from "@/shared/layout/TopNav";
+import { Logo } from "@/shared/ui/Logo";
 
 export default function RegisterPage() {
   return (
-    <div className="relative min-h-screen overflow-clip bg-bg-primary">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-0 top-0 h-[640px] w-[640px] -translate-y-1/4 translate-x-1/4 rounded-full bg-[rgba(166,139,255,0.15)] blur-3xl"
-      />
-      <TopNav />
+    <div className="flex min-h-screen flex-col bg-bg-page">
+      <header className="flex h-16 items-center border-b border-divider bg-bg-surface px-8">
+        <Link to="/">
+          <Logo />
+        </Link>
+      </header>
 
-      <main className="relative mx-auto flex min-h-[calc(100vh-72px)] max-w-[1280px] items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md rounded-[48px] border border-[rgba(68,68,108,0.15)] bg-bg-card p-10">
-          <div className="space-y-2 text-center">
-            <h1 className="font-display text-[36px] font-bold leading-10 text-text-primary">
-              Create account
+      <main className="grid flex-1 place-items-center px-4 py-10">
+        <div className="card w-full max-w-md p-8 shadow-elev">
+          <div className="text-center">
+            <div className="text-xs font-bold uppercase tracking-[0.08em] text-accent">
+              Регистрация
+            </div>
+            <h1 className="mt-1.5 font-display text-[28px] font-extrabold tracking-[-0.02em]">
+              Создайте аккаунт
             </h1>
-            <p className="text-text-secondary">
-              Host live trivia for your community.
+            <p className="mt-1.5 text-sm text-text-secondary">
+              Проводите квизы для класса, команды или мероприятия.
             </p>
           </div>
 
-          <div className="mt-8">
+          <div className="mt-6">
             <RegisterForm />
           </div>
 
-          <p className="mt-6 text-center text-[14px] text-text-secondary">
-            Already have an account?{" "}
-            <Link
-              to="/"
-              className="font-bold text-accent-amber hover:underline"
-            >
-              Login
+          <p className="mt-6 text-center text-[13px] text-text-secondary">
+            Уже есть аккаунт?{" "}
+            <Link to="/" className="font-semibold text-accent hover:underline">
+              Войти
             </Link>
           </p>
         </div>

@@ -30,35 +30,46 @@ export function RegisterForm() {
       navigate("/dashboard", { replace: true });
     } catch (err) {
       const problem = await readProblem(err);
-      setServerError(problem?.detail ?? problem?.title ?? "Registration failed");
+      setServerError(
+        problem?.detail ?? problem?.title ?? "Не удалось зарегистрироваться",
+      );
     }
   });
 
   return (
-    <form noValidate onSubmit={onSubmit} className="space-y-4">
-      <AuthInput
-        placeholder="Display name"
-        autoComplete="name"
-        {...register("display_name")}
-        error={errors.display_name?.message}
-      />
-      <AuthInput
-        placeholder="Email Address"
-        type="email"
-        autoComplete="email"
-        {...register("email")}
-        error={errors.email?.message}
-      />
-      <AuthInput
-        placeholder="Password (min. 8 characters)"
-        type="password"
-        autoComplete="new-password"
-        {...register("password")}
-        error={errors.password?.message}
-      />
+    <form noValidate onSubmit={onSubmit} className="flex flex-col gap-3">
+      <div className="field">
+        <label className="field-label">Имя</label>
+        <AuthInput
+          placeholder="Как к вам обращаться"
+          autoComplete="name"
+          {...register("display_name")}
+          error={errors.display_name?.message}
+        />
+      </div>
+      <div className="field">
+        <label className="field-label">Электронная почта</label>
+        <AuthInput
+          placeholder="you@school.ru"
+          type="email"
+          autoComplete="email"
+          {...register("email")}
+          error={errors.email?.message}
+        />
+      </div>
+      <div className="field">
+        <label className="field-label">Пароль</label>
+        <AuthInput
+          placeholder="Минимум 8 символов"
+          type="password"
+          autoComplete="new-password"
+          {...register("password")}
+          error={errors.password?.message}
+        />
+      </div>
 
       {serverError ? (
-        <p role="alert" className="text-center text-sm text-accent-error">
+        <p role="alert" className="text-center text-sm text-danger">
           {serverError}
         </p>
       ) : null}
@@ -67,9 +78,9 @@ export function RegisterForm() {
         type="submit"
         size="lg"
         disabled={isSubmitting}
-        className="h-auto w-full py-[14px] font-display text-[18px] font-bold"
+        className="mt-2 w-full shadow-accent"
       >
-        {isSubmitting ? "Creating account…" : "Create Organizer Account"}
+        {isSubmitting ? "Создаём аккаунт…" : "Создать аккаунт"}
       </Button>
     </form>
   );

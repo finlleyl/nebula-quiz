@@ -13,14 +13,14 @@ export const AuthInput = forwardRef<HTMLInputElement, Props>(
         ref={ref}
         aria-invalid={error ? true : undefined}
         className={cn(
-          "w-full rounded-[32px] bg-[#161632] px-4 py-[13px] text-[16px] text-text-primary placeholder:text-text-secondary outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-primary-500/40",
-          error && "ring-2 ring-accent-error/60",
+          "input",
+          error && "!border-danger focus:!border-danger focus:!ring-danger/20",
           className,
         )}
         {...props}
       />
       {error ? (
-        <p role="alert" className="mt-1 pl-4 text-xs text-accent-error">
+        <p role="alert" className="mt-1 pl-1 text-xs text-danger">
           {error}
         </p>
       ) : null}

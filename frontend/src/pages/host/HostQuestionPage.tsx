@@ -1,11 +1,16 @@
+import { ArrowRight, Bolt, Check, Eye, Timer, Users, X, Zap } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useLiveGame } from "@/features/live-game/store";
 import { useServerTimer } from "@/features/live-game/hooks";
 import type { QuestionStartPayload, QuestionStats } from "@/shared/lib/ws/protocol";
+import { Avatar } from "@/shared/ui/Avatar";
+import { Button } from "@/shared/ui/button";
+import { Logo } from "@/shared/ui/Logo";
 
-const LABELS = ["A", "B", "C", "D"];
+const LETTERS = ["A", "Б", "В", "Г"];
+const COLORS = ["#0077FF", "#4BB34B", "#FF9900", "#E64646"];
 
 export default function HostQuestionPage() {
   const { code } = useParams<{ code: string }>();
@@ -20,7 +25,6 @@ export default function HostQuestionPage() {
     skipQuestion,
   } = useLiveGame();
 
-  // Store the last question so we can still display it during the reveal phase.
   const lastQuestionRef = useRef<QuestionStartPayload | null>(null);
   if (activeQuestion) lastQuestionRef.current = activeQuestion;
   const displayQuestion = activeQuestion ?? lastQuestionRef.current;
@@ -35,13 +39,8 @@ export default function HostQuestionPage() {
 
   if (!displayQuestion) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: "#0C0C1F", color: "#E5E3FF" }}
-      >
-        <p className="animate-pulse" style={{ color: "#8B8FB8" }}>
-          Waiting for question…
-        </p>
+      <div className="grid min-h-screen place-items-center bg-bg-page text-text-secondary">
+        <p className="animate-pulse">Ожидаем вопрос…</p>
       </div>
     );
   }
@@ -59,6 +58,8 @@ export default function HostQuestionPage() {
       isRevealing={isRevealing}
       correctIds={correctIds}
       stats={stats}
+      roomCode={code ?? ""}
+      quizTitle={roomState?.quiz?.title ?? ""}
       leaderboard={leaderboard}
       onNext={nextQuestion}
       onSkip={skipQuestion}
@@ -66,14 +67,14 @@ export default function HostQuestionPage() {
   );
 }
 
-// ---- inner component ----
-
 interface HostQuestionViewProps {
   question: QuestionStartPayload;
   totalParticipants: number;
   isRevealing: boolean;
   correctIds: string[];
   stats: QuestionStats | undefined;
+  roomCode: string;
+  quizTitle: string;
   leaderboard: { participant_id: string; nickname: string; score: number }[];
   onNext: () => void;
   onSkip: () => void;
@@ -85,207 +86,167 @@ function HostQuestionView({
   isRevealing,
   correctIds,
   stats,
+  roomCode,
+  quizTitle,
   leaderboard,
   onNext,
   onSkip,
 }: HostQuestionViewProps) {
-  const { remainingMs, progress } = useServerTimer(
+  const { remainingMs } = useServerTimer(
     question.server_ts,
-    question.time_limit_ms
+    question.time_limit_ms,
   );
 
   const remainingSec = Math.ceil(remainingMs / 1000);
   const answeredCount = stats?.answered ?? 0;
-  const distributionValues = stats ? Object.values(stats.distribution) : [];
-  const maxAnswers = distributionValues.length > 0 ? Math.max(1, ...distributionValues) : 1;
+  const totalAnswered = stats
+    ? Object.values(stats.distribution).reduce((s, c) => s + c, 0) ||
+      answeredCount ||
+      1
+    : 1;
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ background: "#0C0C1F", color: "#E5E3FF" }}
-    >
-      {/* Top nav */}
-      <header
-        className="flex items-center justify-between px-8 py-4"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <span
-          className="font-display text-lg font-bold uppercase tracking-widest"
-          style={{
-            backgroundImage: "linear-gradient(168deg, #A68CFF 0%, #7C4DFF 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
-          NEBULA QUIZ
-        </span>
-        <div className="flex items-center gap-4">
-          <span className="text-sm" style={{ color: "#8B8FB8" }}>
-            Q {question.index + 1} / {question.total}
+    <div className="flex min-h-screen flex-col bg-bg-page">
+      <header className="flex h-16 items-center gap-4 border-b border-divider bg-bg-surface px-8">
+        <Logo />
+        <div className="ml-5 flex items-center gap-2.5">
+          <span className="chip chip-danger">
+            <span className="dot" /> В ЭФИРЕ
           </span>
-          {!isRevealing && (
-            <span
-              className="text-2xl font-display font-bold"
-              style={{ color: remainingSec <= 5 ? "#EF4444" : "#8DCDFF" }}
-            >
-              {remainingSec}s
-            </span>
-          )}
+          <span className="font-mono text-[13px] text-text-secondary">
+            {roomCode}
+          </span>
+          {quizTitle ? (
+            <span className="text-[13px] text-text-secondary">· {quizTitle}</span>
+          ) : null}
         </div>
+        <div className="flex-1" />
+        <Button variant="secondary">
+          <Eye className="size-4" /> Режим игрока
+        </Button>
+        <Button variant="secondary">
+          <X className="size-4" /> Завершить
+        </Button>
       </header>
 
-      <div className="flex flex-1 gap-8 px-8 py-8 max-w-6xl mx-auto w-full">
-        {/* left: question + bars */}
-        <div className="flex-1 flex flex-col gap-6">
-          {!isRevealing && (
-            <div
-              className="w-full h-1.5 rounded-full overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.08)" }}
-            >
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${Math.max(0, (1 - progress) * 100)}%`,
-                  background: remainingSec <= 5 ? "#EF4444" : "#8DCDFF",
-                  transition: "width 0.1s linear",
-                }}
-              />
+      <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[1fr_320px]">
+        <main className="flex flex-col gap-6 overflow-auto px-12 py-8">
+          <div className="flex items-center gap-4">
+            <span className="chip chip-accent px-3.5 py-1.5 text-sm">
+              Вопрос {question.index + 1} из {question.total}
+            </span>
+            <div className="card flex items-center gap-2.5 px-4 py-2">
+              <Timer className="size-5 text-accent" />
+              <span className="font-mono text-2xl font-extrabold text-accent">
+                {Math.max(0, remainingSec)}
+              </span>
+              <span className="text-[13px] text-text-secondary">сек.</span>
             </div>
-          )}
+            <div className="card flex items-center gap-2.5 px-4 py-2">
+              <Users className="size-[18px]" />
+              <span className="text-base font-bold">
+                {answeredCount}/{totalParticipants} ответили
+              </span>
+            </div>
+            <div className="flex-1" />
+            {!isRevealing ? (
+              <Button variant="secondary" onClick={onSkip}>
+                Пропустить
+              </Button>
+            ) : null}
+            {isRevealing ? (
+              <Button className="shadow-accent" onClick={onNext}>
+                {question.index + 1 >= question.total
+                  ? "Завершить игру"
+                  : "Следующий вопрос"}{" "}
+                <ArrowRight className="size-4" />
+              </Button>
+            ) : null}
+          </div>
 
-          <h2
-            className="font-display text-2xl font-bold leading-snug"
-            style={{ color: "#E5E3FF" }}
-          >
-            {question.text}
-          </h2>
+          <div className="card p-10 text-center">
+            <h1 className="font-display text-[44px] font-extrabold leading-[1.2] tracking-[-0.02em]">
+              {question.text}
+            </h1>
+          </div>
 
-          {/* Answer distribution */}
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
             {question.options.map((opt, i) => {
               const count = stats?.distribution[opt.id] ?? 0;
-              const pct = maxAnswers > 0 ? count / maxAnswers : 0;
+              const pct = Math.round((count / totalAnswered) * 100);
+              const color = COLORS[i % COLORS.length];
+              const letter = LETTERS[i] ?? opt.label;
               const isCorrect = correctIds.includes(opt.id);
-              const label = LABELS[i] ?? opt.label;
-
               return (
-                <div key={opt.id} className="flex items-center gap-3">
-                  <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                    style={{
-                      background:
-                        isRevealing && isCorrect ? "rgba(52,211,153,0.20)" : "rgba(255,255,255,0.08)",
-                      color: isRevealing && isCorrect ? "#34D399" : "#8B8FB8",
-                    }}
-                  >
-                    {isRevealing && isCorrect ? "✓" : label}
-                  </span>
-                  <div className="flex-1 flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm" style={{ color: "#E5E3FF" }}>
+                <div
+                  key={opt.id}
+                  className="card relative overflow-hidden p-[18px]"
+                >
+                  <div
+                    className="absolute inset-y-0 left-0 opacity-[0.08]"
+                    style={{ background: color, width: `${pct}%` }}
+                  />
+                  <div className="relative flex items-center gap-3.5">
+                    <div
+                      className="grid size-10 place-items-center rounded-md font-display text-lg font-extrabold text-white"
+                      style={{ background: color }}
+                    >
+                      {letter}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 text-[15px] font-semibold">
                         {opt.text}
-                      </span>
-                      <span className="text-sm font-bold" style={{ color: "#A8A7D5" }}>
-                        {count}
-                      </span>
+                        {isRevealing && isCorrect ? (
+                          <Check
+                            className="size-4 text-success"
+                            strokeWidth={3}
+                          />
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 text-xs text-text-secondary">
+                        {count} ответов · {pct}%
+                      </div>
                     </div>
                     <div
-                      className="h-2 rounded-full overflow-hidden"
-                      style={{ background: "rgba(255,255,255,0.08)" }}
+                      className="font-mono text-[26px] font-extrabold"
+                      style={{ color }}
                     >
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${pct * 100}%`,
-                          background: isRevealing && isCorrect ? "#34D399" : "#7C4DFF",
-                        }}
-                      />
+                      {pct}%
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
+        </main>
 
-          {/* Stats row */}
-          <div className="flex items-center gap-6 text-sm" style={{ color: "#8B8FB8" }}>
-            <span>
-              <b style={{ color: "#8DCDFF" }}>{answeredCount}</b> / {totalParticipants} answered
-            </span>
-            {isRevealing && (
-              <span>
-                <b style={{ color: "#34D399" }}>{stats?.correct ?? 0}</b> correct
-              </span>
-            )}
+        <aside className="flex flex-col gap-3 overflow-auto border-l border-divider bg-bg-surface p-5">
+          <div className="text-[13px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+            Живая лента
           </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-4 mt-auto">
-            {!isRevealing ? (
-              <button
-                onClick={onSkip}
-                className="rounded-full px-6 py-3 text-sm font-semibold"
-                style={{
-                  border: "1px solid rgba(68,68,108,0.30)",
-                  color: "#A8A7D5",
-                  background: "transparent",
-                }}
-              >
-                Skip Question →
-              </button>
-            ) : (
-              <button
-                onClick={onNext}
-                className="rounded-full px-8 py-3 text-base font-bold"
-                style={{
-                  backgroundImage: "linear-gradient(180deg, #A68CFF 0%, #7C4DFF 100%)",
-                  color: "#FFFFFF",
-                  boxShadow: "0 10px 20px 0 rgba(166,139,255,0.20)",
-                }}
-              >
-                {question.index + 1 >= question.total ? "Finish Game ▶" : "Next Question ▶"}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* right: leaderboard */}
-        <aside
-          className="w-72 flex flex-col gap-3 rounded-2xl p-5 self-start"
-          style={{ background: "#111128", border: "1px solid rgba(255,255,255,0.06)" }}
-        >
-          <h3
-            className="text-sm font-semibold uppercase tracking-widest"
-            style={{ color: "#8B8FB8" }}
-          >
-            Leaderboard
-          </h3>
-          {leaderboard.length === 0 && (
-            <p className="text-xs" style={{ color: "#5C5E85" }}>
-              No scores yet
+          {leaderboard.length === 0 ? (
+            <p className="text-xs text-text-tertiary">
+              Ответов пока нет
             </p>
-          )}
+          ) : null}
           {leaderboard.slice(0, 8).map((entry, i) => (
             <div
               key={entry.participant_id}
-              className="flex items-center gap-3 rounded-full px-4 py-2"
-              style={{
-                background: i === 0 ? "rgba(124,77,255,0.18)" : "rgba(255,255,255,0.04)",
-              }}
+              className={`flex items-center gap-2.5 rounded-[10px] p-2 ${i === 0 ? "bg-success-soft" : ""}`}
             >
-              <span
-                className="w-6 text-center text-sm font-bold"
-                style={{ color: i === 0 ? "#A68CFF" : "#8B8FB8" }}
-              >
-                {i + 1}
-              </span>
-              <span className="flex-1 text-sm truncate" style={{ color: "#E5E3FF" }}>
-                {entry.nickname}
-              </span>
-              <span className="text-sm font-bold font-display" style={{ color: "#8DCDFF" }}>
-                {entry.score.toLocaleString()}
-              </span>
+              <Avatar name={entry.nickname} size={32} />
+              <div className="flex-1">
+                <b className="text-[13px]">{entry.nickname}</b>
+                <div className="text-xs text-text-secondary">
+                  счёт: {entry.score.toLocaleString("ru-RU")}
+                </div>
+              </div>
+              {i === 0 ? (
+                <Zap className="size-4 fill-warning text-warning" />
+              ) : null}
+              {i === 3 ? (
+                <Bolt className="size-4 text-warning" />
+              ) : null}
             </div>
           ))}
         </aside>

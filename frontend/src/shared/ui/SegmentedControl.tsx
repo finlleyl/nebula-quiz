@@ -23,10 +23,7 @@ export function SegmentedControl<T extends string | number>({
   return (
     <div
       role="radiogroup"
-      className={cn(
-        "inline-flex rounded-2xl border border-border bg-bg-input p-1",
-        className,
-      )}
+      className={cn("inline-flex rounded-md bg-bg-muted p-1", className)}
     >
       {options.map((opt) => {
         const active = opt.value === value;
@@ -39,9 +36,9 @@ export function SegmentedControl<T extends string | number>({
             disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "rounded-pill px-4 py-2 text-sm font-medium transition-colors",
+              "rounded-[8px] px-4 py-2 text-sm font-semibold transition-colors",
               active
-                ? "bg-gradient-primary text-white shadow-glow-primary"
+                ? "bg-bg-surface text-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
                 : "text-text-secondary hover:text-text-primary",
             )}
           >

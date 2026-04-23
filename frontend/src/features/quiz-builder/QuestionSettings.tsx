@@ -18,48 +18,57 @@ export function QuestionSettings({
   onQuestionType,
   onPoints,
 }: Props) {
+  const presets = [10, 20, 30, 60] as const;
   return (
-    <div className="space-y-6 rounded-[24px] border border-border-subtle bg-bg-card p-6">
+    <div className="card space-y-5 p-6">
       <div>
-        <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-text-muted">
-          Time Limit
+        <p className="mb-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+          Время на ответ
         </p>
-        <SegmentedControl<number>
-          value={timeLimit}
-          onChange={onTimeLimit}
-          options={[
-            { value: 10, label: "10s" },
-            { value: 20, label: "20s" },
-            { value: 30, label: "30s" },
-            { value: 60, label: "60s" },
-          ]}
-        />
+        <div className="grid grid-cols-4 gap-1.5">
+          {presets.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onTimeLimit(t)}
+              className={`rounded-sm p-[10px_6px] text-center font-mono text-sm font-bold ${t === timeLimit ? "bg-accent text-white" : "bg-bg-muted text-text-primary"}`}
+            >
+              {t}с
+            </button>
+          ))}
+        </div>
       </div>
+
       <div>
-        <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-text-muted">
-          Answer Type
+        <p className="mb-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+          Тип ответа
         </p>
         <SegmentedControl<QuestionType>
           value={questionType}
           onChange={onQuestionType}
           options={[
-            { value: "single", label: "Single Choice" },
-            { value: "multiple", label: "Multiple Choice" },
+            { value: "single", label: "Один ответ" },
+            { value: "multiple", label: "Несколько" },
           ]}
+          className="w-full"
         />
       </div>
+
       <div>
-        <label className="mb-3 block text-sm font-semibold uppercase tracking-wider text-text-muted">
-          Points
+        <label className="mb-2.5 block text-[13px] font-bold uppercase tracking-[0.06em] text-text-secondary">
+          Баллы
         </label>
-        <input
-          type="number"
-          min={1}
-          max={10000}
-          value={points}
-          onChange={(e) => onPoints(Number(e.target.value))}
-          className="w-32 rounded-md border border-border bg-bg-input px-4 py-2 text-text-primary focus:border-primary-500 focus:outline-none"
-        />
+        <div className="flex items-center gap-2.5">
+          <input
+            type="number"
+            min={1}
+            max={10000}
+            value={points}
+            onChange={(e) => onPoints(Number(e.target.value))}
+            className="input w-32 text-center font-mono font-bold"
+          />
+          <span className="text-xs text-text-secondary">макс.</span>
+        </div>
       </div>
     </div>
   );

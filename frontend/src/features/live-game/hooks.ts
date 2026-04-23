@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { createGame, type CreateGameResponse } from "./api";
+import {
+  createGame,
+  listActiveSessions,
+  resumeGame,
+  type ActiveSession,
+  type CreateGameResponse,
+  type ResumeGameResponse,
+} from "./api";
 
 export const HOST_TICKET_KEY = "host_ticket";
 export const HOST_ROOM_CODE_KEY = "host_room_code";
@@ -15,6 +22,30 @@ export function useHostGame() {
       sessionStorage.setItem(HOST_TICKET_KEY, res.ws_ticket);
       sessionStorage.setItem(HOST_ROOM_CODE_KEY, res.room_code);
       navigate(`/host/${res.room_code}`);
+    },
+  });
+}
+
+export function useActiveSessions() {
+  return useQuery<ActiveSession[]>({
+    queryKey: ["me", "sessions"],
+    queryFn: listActiveSessions,
+    refetchInterval: 5000,
+  });
+}
+
+export function useResumeSession() {
+  const navigate = useNavigate();
+  return useMutation<ResumeGameResponse, Error, string>({
+    mutationFn: (sessionId: string) => resumeGame(sessionId),
+    onSuccess: (res) => {
+      sessionStorage.setItem(HOST_TICKET_KEY, res.ws_ticket);
+      sessionStorage.setItem(HOST_ROOM_CODE_KEY, res.room_code);
+      if (res.status === "in_progress") {
+        navigate(`/host/${res.room_code}/question`);
+      } else {
+        navigate(`/host/${res.room_code}`);
+      }
     },
   });
 }

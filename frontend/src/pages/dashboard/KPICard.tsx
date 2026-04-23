@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+
 import { cn } from "@/shared/lib/utils";
 
 interface Props {
@@ -6,7 +7,8 @@ interface Props {
   value: string;
   valueClassName?: string;
   hint?: ReactNode;
-  progress?: number; // 0..100, shows amber bar if set
+  chart?: ReactNode;
+  progress?: number;
 }
 
 export function KPICard({
@@ -14,26 +16,32 @@ export function KPICard({
   value,
   valueClassName,
   hint,
+  chart,
   progress,
 }: Props) {
   return (
-    <div className="rounded-3xl border border-border-subtle bg-bg-card/60 p-6 backdrop-blur-sm">
-      <p className="text-sm font-medium uppercase tracking-wider text-text-muted">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "mt-3 font-display text-[48px] font-bold leading-none text-text-primary",
-          valueClassName,
-        )}
-      >
-        {value}
-      </p>
-      {hint ? <div className="mt-3 text-sm text-text-secondary">{hint}</div> : null}
+    <div className="card min-h-[140px] p-5">
+      <div className="flex items-start justify-between">
+        <div className="text-[13px] font-medium text-text-secondary">
+          {label}
+        </div>
+        {chart}
+      </div>
+      <div className="mt-2.5 flex items-baseline gap-2.5">
+        <div
+          className={cn(
+            "font-display text-[34px] font-extrabold leading-none tracking-[-0.02em] text-text-primary",
+            valueClassName,
+          )}
+        >
+          {value}
+        </div>
+        {hint ? <div className="text-[13px] text-text-secondary">{hint}</div> : null}
+      </div>
       {progress != null ? (
-        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-pill bg-bg-input">
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-bg-muted">
           <div
-            className="h-full bg-accent-amber"
+            className="h-full bg-accent"
             style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
           />
         </div>

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Clock, Users } from "lucide-react";
+import { ChevronRight, Clock, Trophy, Users } from "lucide-react";
 
 import { api } from "@/shared/lib/http";
 import { DashboardSidebar } from "@/pages/dashboard/DashboardSidebar";
@@ -24,17 +24,17 @@ function useHistory() {
 }
 
 function rankLabel(rank: number, total: number) {
-  if (rank === 1) return "🥇 1st";
-  if (rank === 2) return "🥈 2nd";
-  if (rank === 3) return "🥉 3rd";
-  return `#${rank} of ${total}`;
+  if (rank === 1) return "🥇 1 место";
+  if (rank === 2) return "🥈 2 место";
+  if (rank === 3) return "🥉 3 место";
+  return `${rank} из ${total}`;
 }
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
+  return new Date(iso).toLocaleDateString("ru-RU", {
     day: "numeric",
+    month: "short",
     year: "numeric",
   });
 }
@@ -43,169 +43,93 @@ export default function ReportsPage() {
   const { data: entries, isPending, isError } = useHistory();
 
   return (
-    <div
-      className="flex min-h-screen"
-      style={{ background: "#0C0C1F", color: "#E5E3FF" }}
-    >
+    <div className="flex min-h-screen bg-bg-page">
       <DashboardSidebar />
 
-      <main className="flex-1 overflow-auto p-8">
-        <div className="mb-8">
-          <h1
-            className="font-display font-bold"
-            style={{ fontSize: 32, color: "#E5E3FF", letterSpacing: "-0.5px" }}
-          >
-            Match History
-          </h1>
-          <p style={{ color: "#A8A7D5", marginTop: 4 }}>
-            Your recent quiz sessions
-          </p>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex h-16 items-center gap-4 border-b border-divider bg-bg-surface px-8">
+          <div className="text-[15px] text-text-tertiary">Игрок</div>
+          <ChevronRight className="size-3.5 text-text-tertiary" />
+          <div className="text-[15px] font-semibold">История</div>
         </div>
 
-        {isPending && (
-          <p style={{ color: "#8B8FB8" }}>Loading history…</p>
-        )}
+        <main className="flex-1 overflow-auto p-8">
+          <h1 className="mb-1.5 font-display text-[28px] font-extrabold tracking-[-0.02em]">
+            История матчей
+          </h1>
+          <p className="mb-6 text-sm text-text-secondary">
+            Последние сыгранные сессии
+          </p>
 
-        {isError && (
-          <p style={{ color: "#EF4444" }}>Failed to load history.</p>
-        )}
+          {isPending ? (
+            <p className="text-text-secondary">Загружаем историю…</p>
+          ) : null}
 
-        {!isPending && !isError && entries?.length === 0 && (
-          <div
-            style={{
-              border: "1px dashed rgba(255,255,255,0.10)",
-              borderRadius: 16,
-              padding: 48,
-              textAlign: "center",
-              color: "#5C5E85",
-            }}
-          >
-            <Trophy className="mx-auto mb-4 opacity-30" size={48} />
-            <p style={{ fontSize: 18, fontWeight: 600 }}>No matches yet</p>
-            <p style={{ marginTop: 8, fontSize: 14 }}>
-              Join a game to see your history here.
-            </p>
-          </div>
-        )}
+          {isError ? (
+            <p className="text-danger">Не удалось загрузить историю.</p>
+          ) : null}
 
-        {entries && entries.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {entries.map((e) => (
-              <div
-                key={e.session_id}
-                style={{
-                  background: "#111128",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 16,
-                  padding: "20px 24px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 16,
-                }}
-              >
-                {/* Left: quiz name + date */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p
-                    style={{
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      fontWeight: 600,
-                      fontSize: 16,
-                      color: "#E5E3FF",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {e.quiz_title}
-                  </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      marginTop: 4,
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        fontSize: 13,
-                        color: "#8B8FB8",
-                      }}
-                    >
-                      <Clock size={12} />
-                      {formatDate(e.finished_at)}
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: 12,
-                        color: "#5C5E85",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      {e.room_code}
-                    </span>
-                    {e.match_number != null && (
-                      <span style={{ fontSize: 12, color: "#5C5E85" }}>
-                        Match #{e.match_number}
+          {!isPending && !isError && entries?.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-lg border-2 border-dashed border-border-strong p-12 text-center text-text-secondary">
+              <Trophy className="size-10 opacity-40" />
+              <p className="text-lg font-semibold">Матчей пока нет</p>
+              <p className="text-sm">
+                Сыграйте в квиз, и он появится здесь.
+              </p>
+            </div>
+          ) : null}
+
+          {entries && entries.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {entries.map((e) => (
+                <div
+                  key={e.session_id}
+                  className="card flex items-center gap-4 p-5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-base font-bold">
+                      {e.quiz_title}
+                    </p>
+                    <div className="mt-1 flex items-center gap-3 text-[13px] text-text-secondary">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="size-3" />
+                        {formatDate(e.finished_at)}
                       </span>
-                    )}
+                      <span className="font-mono text-xs text-text-tertiary tracking-wider">
+                        {e.room_code}
+                      </span>
+                      {e.match_number != null ? (
+                        <span className="text-xs text-text-tertiary">
+                          №{e.match_number}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="min-w-[110px] text-center">
+                    <p
+                      className={`font-display text-lg font-bold ${e.rank === 1 ? "text-gold" : e.rank <= 3 ? "text-accent" : ""}`}
+                    >
+                      {rankLabel(e.rank, e.total_participants)}
+                    </p>
+                    <p className="mt-0.5 inline-flex items-center justify-center gap-1 text-xs text-text-secondary">
+                      <Users className="size-3" />
+                      {e.total_participants} игроков
+                    </p>
+                  </div>
+
+                  <div className="min-w-[110px] text-right">
+                    <p className="font-mono text-[22px] font-extrabold text-accent">
+                      {e.total_score.toLocaleString("ru-RU")}
+                    </p>
+                    <p className="text-xs text-text-secondary">очков</p>
                   </div>
                 </div>
-
-                {/* Middle: rank */}
-                <div style={{ textAlign: "center", minWidth: 100 }}>
-                  <p
-                    style={{
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      fontWeight: 700,
-                      fontSize: 18,
-                      color: e.rank === 1 ? "#FFB778" : e.rank <= 3 ? "#8DCDFF" : "#A8A7D5",
-                    }}
-                  >
-                    {rankLabel(e.rank, e.total_participants)}
-                  </p>
-                  <p
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 4,
-                      fontSize: 12,
-                      color: "#8B8FB8",
-                      marginTop: 2,
-                    }}
-                  >
-                    <Users size={12} />
-                    {e.total_participants} players
-                  </p>
-                </div>
-
-                {/* Right: score */}
-                <div style={{ textAlign: "right", minWidth: 100 }}>
-                  <p
-                    style={{
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      fontWeight: 700,
-                      fontSize: 22,
-                      color: "#8DCDFF",
-                    }}
-                  >
-                    {e.total_score.toLocaleString()}
-                  </p>
-                  <p style={{ fontSize: 12, color: "#8B8FB8", marginTop: 2 }}>
-                    pts
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
+              ))}
+            </div>
+          ) : null}
+        </main>
+      </div>
     </div>
   );
 }

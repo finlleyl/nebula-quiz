@@ -12,7 +12,12 @@ interface Props {
   onSelect: () => void;
 }
 
-export function SortableQuestionRow({ question, index, active, onSelect }: Props) {
+export function SortableQuestionRow({
+  question,
+  index,
+  active,
+  onSelect,
+}: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: question.id });
 
@@ -25,36 +30,46 @@ export function SortableQuestionRow({ question, index, active, onSelect }: Props
         opacity: isDragging ? 0.5 : 1,
       }}
       className={cn(
-        "flex items-center gap-3 rounded-[16px] border px-3 py-3 transition-colors",
+        "flex items-center gap-2.5 rounded-sm p-2.5 transition-colors",
         active
-          ? "border-primary-500 bg-primary-500/10"
-          : "border-border-subtle bg-bg-input hover:border-border",
+          ? "bg-accent-softer ring-1 ring-accent/20"
+          : "hover:bg-bg-muted",
       )}
     >
       <button
         type="button"
-        aria-label="Drag to reorder"
-        className="cursor-grab text-text-muted hover:text-text-primary active:cursor-grabbing"
+        aria-label="Перетащить"
+        className="cursor-grab text-text-tertiary active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="size-4" />
       </button>
-      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-bg-elevated text-xs font-semibold text-text-secondary">
+      <span
+        className={cn(
+          "grid size-6 shrink-0 place-items-center rounded-xs font-mono text-xs font-bold",
+          active ? "bg-accent text-white" : "bg-bg-muted text-text-secondary",
+        )}
+      >
         {index + 1}
       </span>
       <button
         type="button"
         onClick={onSelect}
-        className="flex-1 truncate text-left text-sm text-text-primary"
+        className={cn(
+          "flex-1 truncate text-left text-[13px]",
+          active ? "font-semibold" : "font-medium text-text-secondary",
+        )}
       >
-        {question.text || <span className="italic text-text-muted">Untitled</span>}
+        {question.text || (
+          <span className="italic text-text-tertiary">Без текста</span>
+        )}
       </button>
-      <span className="text-text-muted">
+      <span className="text-text-tertiary">
         {question.image_url ? (
-          <ImageIcon className="size-4" />
+          <ImageIcon className="size-3.5" />
         ) : (
-          <Type className="size-4" />
+          <Type className="size-3.5" />
         )}
       </span>
     </div>

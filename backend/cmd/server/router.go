@@ -91,6 +91,8 @@ func newRouter(
 				// Game session management (host only).
 				r.Post("/games", gameHandler.Create)
 				r.Get("/games/{id}", gameHandler.Get)
+				r.Post("/games/{id}/resume", gameHandler.Resume)
+				r.Get("/me/sessions", gameHandler.ActiveSessions)
 			})
 		})
 	})

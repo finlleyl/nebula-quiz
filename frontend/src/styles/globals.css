@@ -6,18 +6,243 @@
 
 @layer base {
   html {
-    background-color: var(--bg-primary);
+    background-color: var(--bg-page);
     color: var(--text-primary);
-    font-family: var(--font-body);
+    font-family: var(--font-ui);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     min-height: 100vh;
   }
 
+  *, *::before, *::after { box-sizing: border-box; }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  p { margin: 0; }
+
   ::selection {
-    background-color: var(--primary-500);
+    background-color: var(--accent);
+    color: var(--text-on-accent);
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(13,26,43,0.12);
+    border-radius: 999px;
+    border: 2px solid var(--bg-page);
+  }
+  ::-webkit-scrollbar-track { background: transparent; }
+}
+
+@layer components {
+  /* ---------- Кнопки ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1;
+    border-radius: var(--r-sm);
+    padding: 0 16px;
+    height: 40px;
+    transition: background .15s, transform .08s, box-shadow .15s;
+    white-space: nowrap;
     color: var(--text-primary);
   }
+  .btn:active { transform: scale(.985); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--text-on-accent);
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+  .btn-secondary {
+    background: var(--bg-muted);
+    color: var(--text-primary);
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--bg-hover); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--accent);
+  }
+  .btn-ghost:hover:not(:disabled) { background: var(--accent-softer); }
+
+  .btn-danger {
+    background: var(--danger);
+    color: #fff;
+  }
+  .btn-danger:hover:not(:disabled) { background: #C43636; }
+
+  .btn-lg { height: 48px; font-size: 16px; padding: 0 20px; border-radius: var(--r-md); }
+  .btn-sm { height: 32px; font-size: 13px; padding: 0 12px; border-radius: 8px; }
+  .btn-xl { height: 56px; font-size: 17px; padding: 0 24px; border-radius: 14px; }
+  .btn-block { width: 100%; }
+
+  .btn-icon {
+    height: 40px; width: 40px; padding: 0;
+    border-radius: var(--r-sm);
+    background: var(--bg-muted);
+    color: var(--text-secondary);
+    border: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s, color .15s;
+  }
+  .btn-icon:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+
+  /* ---------- Инпуты ---------- */
+  .input {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: var(--r-sm);
+    background: var(--bg-muted);
+    border: 1px solid transparent;
+    font-size: 15px;
+    color: var(--text-primary);
+    transition: background .12s, border-color .12s, box-shadow .12s;
+  }
+  .input::placeholder { color: var(--text-placeholder); }
+  .input:hover:not(:disabled):not(:focus) { background: var(--bg-hover); }
+  .input:focus {
+    outline: none;
+    background: var(--bg-surface);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,119,255,0.12);
+  }
+  .input-lg { height: 52px; font-size: 17px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  /* ---------- Карточки ---------- */
+  .card {
+    background: var(--bg-surface);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* ---------- Чипы / pills ---------- */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--r-pill);
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--bg-muted);
+    color: var(--text-secondary);
+  }
+  .chip-accent  { background: var(--accent-soft);  color: var(--accent); }
+  .chip-success { background: var(--success-soft); color: var(--success); }
+  .chip-warn    { background: var(--warning-soft); color: var(--warning); }
+  .chip-danger  { background: var(--danger-soft);  color: var(--danger); }
+
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* ---------- Плейсхолдер-картинка ---------- */
+  .placeholder-img {
+    background:
+      repeating-linear-gradient(
+        135deg,
+        rgba(0,119,255,0.06) 0 8px,
+        rgba(0,119,255,0.10) 8px 16px
+      ),
+      var(--accent-softer);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ---------- Разделитель ---------- */
+  .divider {
+    height: 1px;
+    background: var(--divider);
+    border: 0;
+    margin: 0;
+  }
+
+  /* ---------- Аватарка ---------- */
+  .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: 700;
+    color: #fff;
+    font-family: var(--font-display);
+    flex-shrink: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #4A90E2, #0077FF);
+  }
+  .avatar.sz-24 { width: 24px; height: 24px; font-size: 10px; }
+  .avatar.sz-32 { width: 32px; height: 32px; font-size: 12px; }
+  .avatar.sz-40 { width: 40px; height: 40px; font-size: 14px; }
+  .avatar.sz-48 { width: 48px; height: 48px; font-size: 16px; }
+  .avatar.sz-64 { width: 64px; height: 64px; font-size: 22px; }
+  .avatar.sz-96 { width: 96px; height: 96px; font-size: 32px; }
+
+  .av-1 { background: linear-gradient(135deg, #4A90E2, #0077FF); }
+  .av-2 { background: linear-gradient(135deg, #FF6B9D, #C23B7A); }
+  .av-3 { background: linear-gradient(135deg, #FFB822, #FF7A00); }
+  .av-4 { background: linear-gradient(135deg, #4BB34B, #2C8D2C); }
+  .av-5 { background: linear-gradient(135deg, #9E6FDB, #6E3FC0); }
+  .av-6 { background: linear-gradient(135deg, #35C7C9, #0F8C8E); }
+  .av-7 { background: linear-gradient(135deg, #E64646, #A31E1E); }
+  .av-8 { background: linear-gradient(135deg, #5D7A9D, #2E4560); }
+
+  /* ---------- Иконки ---------- */
+  .ico {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+  }
+  .ico-16 { width: 16px; height: 16px; }
+  .ico-24 { width: 24px; height: 24px; }
+  .ico-28 { width: 28px; height: 28px; }
+
+  /* ---------- Утилиты ---------- */
+  .hstack { display: flex; align-items: center; gap: 12px; }
+  .vstack { display: flex; flex-direction: column; gap: 12px; }
+  .muted { color: var(--text-secondary); }
+  .tertiary { color: var(--text-tertiary); }
+}
+
+@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px) }
+  to   { opacity: 1; transform: none }
 }

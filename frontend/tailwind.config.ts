@@ -1,75 +1,69 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Nebula Quiz design tokens. Values come from Figma node 1:776
- * ("Results & Leaderboard", 2026-04-17) — the palette is intentionally
- * warmer and softer than Tailwind defaults. Do NOT substitute `violet-500`
- * / `slate-950` etc. Keep this file in lockstep with src/styles/tokens.css.
+ * Квиз.Лайв дизайн-токены (light VK-style).
+ * Источник правды — handoff bundle из Claude Design
+ * (vk-quiz/project/styles.css). Держи в lockstep с src/styles/tokens.css.
  */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
-  darkMode: "class",
   theme: {
     extend: {
       colors: {
         bg: {
-          primary: "#0C0C1F",
-          secondary: "#12132B",
-          card: "#111128",
-          elevated: "#222247",
-          input: "#0F1127",
-        },
-        primary: {
-          400: "#A68CFF",
-          500: "#7C4DFF",
-          600: "#6B3FEB",
-          DEFAULT: "#7C4DFF",
+          page:    "#EBEEF2",
+          surface: "#FFFFFF",
+          muted:   "#F2F4F7",
+          hover:   "#E8ECF1",
+          sidebar: "#FFFFFF",
         },
         accent: {
-          cyan: "#8DCDFF",
-          amber: "#FFB778",
-          orange: "#FB923C",
-          success: "#34D399",
-          error: "#EF4444",
+          DEFAULT: "#0077FF",
+          hover:   "#0066DB",
+          soft:    "#E5F0FF",
+          softer:  "#F0F6FF",
         },
+        success: { DEFAULT: "#4BB34B", soft: "#E6F4E6" },
+        warning: { DEFAULT: "#FF9900", soft: "#FFF4E0" },
+        danger:  { DEFAULT: "#E64646", soft: "#FCE9E9" },
+        gold:    "#FFB922",
+        silver:  "#B4BEC7",
+        bronze:  "#D08B5A",
         text: {
-          primary: "#E5E3FF",
-          secondary: "#A8A7D5",
-          muted: "#8B8FB8",
-          placeholder: "#5C5E85",
+          primary:     "#0D1A2B",
+          secondary:   "#6D7885",
+          tertiary:    "#99A2AD",
+          "on-accent": "#FFFFFF",
+          placeholder: "#B8C1CC",
         },
         border: {
-          subtle: "rgba(255, 255, 255, 0.06)",
-          DEFAULT: "rgba(68, 68, 108, 0.30)",
+          DEFAULT: "rgba(13, 26, 43, 0.08)",
+          strong:  "rgba(13, 26, 43, 0.14)",
         },
+        divider: "rgba(13, 26, 43, 0.06)",
       },
       fontFamily: {
-        display: ["Space Grotesk", "ui-sans-serif", "sans-serif"],
-        body: ["Plus Jakarta Sans", "ui-sans-serif", "sans-serif"],
-        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
-      },
-      fontSize: {
-        mega: ["120px", { lineHeight: "1", letterSpacing: "-0.02em" }],
+        ui:      ["Inter", "Helvetica Neue", "Helvetica", "Arial", "sans-serif"],
+        display: ["Manrope", "Inter", "sans-serif"],
+        mono:    ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       borderRadius: {
-        sm: "8px",
-        md: "12px",
-        lg: "16px",
-        xl: "20px",
-        "3xl": "32px",
-        "2xl": "48px",
-        pill: "9999px",
+        xs:   "8px",
+        sm:   "10px",
+        md:   "14px",
+        lg:   "20px",
+        xl:   "28px",
+        pill: "999px",
       },
       boxShadow: {
-        "glow-primary": "0 10px 20px 0 rgba(166, 139, 255, 0.20)",
-        "row-elevated": "0 10px 20px 0 rgba(0, 0, 0, 0.30)",
-        podium: "0 20px 40px 0 rgba(0, 0, 0, 0.50)",
-        "podium-gold": "0 20px 40px 0 rgba(166, 139, 255, 0.20)",
-        card: "0 4px 24px rgba(0, 0, 0, 0.35)",
+        card:    "0 1px 0 rgba(13,26,43,0.04), 0 2px 8px rgba(13,26,43,0.04)",
+        elev:    "0 4px 16px rgba(13,26,43,0.08)",
+        pop:     "0 8px 32px rgba(13,26,43,0.12)",
+        accent:  "0 8px 24px rgba(0,119,255,0.28)",
       },
       backgroundImage: {
-        "gradient-primary": "linear-gradient(180deg, #A68CFF 0%, #7C4DFF 100%)",
-        "gradient-logo": "linear-gradient(168deg, #A68CFF 0%, #7C4DFF 100%)",
+        "gradient-hero": "linear-gradient(135deg, #0077FF 0%, #1E90FF 60%, #5EB0FF 100%)",
+        "gradient-lobby": "linear-gradient(140deg, #F0F6FF 0%, #EBEEF2 60%)",
       },
     },
   },
